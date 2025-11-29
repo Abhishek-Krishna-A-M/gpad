@@ -42,6 +42,10 @@ func Run() {
 		}
 		handleView(args[1:])
 
+	case "rm", "remove", "delete":
+		handleDelete(args[1:])
+		return
+
 	case "sync":
 		handleSync(args[1:])
 
