@@ -24,6 +24,9 @@ func List() error {
 		if err != nil {
 			return err
 		}
+		if info.IsDir() && info.Name() == ".git" {
+			return filepath.SkipDir
+		}
 
 		if path == rootPath {
 			return nil

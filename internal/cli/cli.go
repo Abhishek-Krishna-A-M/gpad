@@ -42,6 +42,9 @@ func Run() {
 		}
 		handleView(args[1:])
 
+	case "sync":
+		handleSync(args[1:])
+
 	case "list":
 		handleList()
 
@@ -314,3 +317,27 @@ func handleUninstall() {
 
 	fmt.Println("\ngpad uninstall complete.")
 }
+
+func handleSync(args []string) {
+	cfg, _ := config.Load()
+	if !cfg.GitEnabled {
+		fmt.Println("Git sync is not enabled.")
+		return
+	}
+
+	notesDir := storage.NotesDir()
+
+	if len(args) > 0 && args[0] == "log" {
+		gitrepo.Log(notesDir)
+		return
+	}
+
+	fmt.Println("Pulling latest changes...")
+	gitrepo.Pull(notesDir)
+
+	fmt.Println("Pushing local changes...")
+	gitrepo.AddCommitPush(notesDir, "Manual sync")
+
+	fmt.Println("Sync complete.")
+}
+

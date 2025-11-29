@@ -57,9 +57,8 @@ func RenderCustom(input string) (string, error) {
 
 		// H1
 		if strings.HasPrefix(line, "# ") {
-			text := strings.ToUpper(strings.TrimSpace(line[2:]))
+			text := (strings.TrimSpace(line[2:])
 			write(Bold + Cyan + text + Reset)
-			write(Cyan + underline(text, "=") + Reset)
 			continue
 		}
 
@@ -67,7 +66,6 @@ func RenderCustom(input string) (string, error) {
 		if strings.HasPrefix(line, "## ") {
 			text := strings.TrimSpace(line[3:])
 			write(Bold + Yellow + text + Reset)
-			write(Yellow + underline(text, "-") + Reset)
 			continue
 		}
 
