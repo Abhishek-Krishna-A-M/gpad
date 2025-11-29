@@ -3,13 +3,14 @@ package cli
 import (
 	"fmt"
 	"os"
-	"github.com/Abhishek-Krishna-A-M/gpad/internal/storage"
+	"path/filepath"
 	"github.com/Abhishek-Krishna-A-M/gpad/internal/notes"
+	"github.com/Abhishek-Krishna-A-M/gpad/internal/storage"
 )
 
 func Run() {
 	if err := storage.EnsureDirs(); err != nil {
-		fmt.Println("Error setting up storage:", err)
+		fmt.Println("Error:", err)
 		return
 	}
 	args := os.Args[1:]
@@ -19,28 +20,19 @@ func Run() {
 		return
 	}
 
-	switch args[0] {
+	if len(args) == 1 && filepath.Ext(args[0]) == ".md" {
+		handleOpen(args[0])
+		return
+	}
 
-	case "create":
-		if len(args) < 2 {
-			fmt.Println("Usage: gpad create <path>")
-			return
-		}
-		handleCreate(args[1])
+	switch args[0] {
 
 	case "view":
 		if len(args) < 2 {
-			fmt.Println("Usage: gpad view <file.md>")
+			fmt.Println("Usage: gpad view <file>")
 			return
 		}
 		handleView(args[1])
-
-	case "edit":
-		if len(args) < 2 {
-			fmt.Println("Usage: gpad edit <file.md>")
-			return
-		}
-		handleEdit(args[1])
 
 	case "list":
 		handleList()
@@ -63,25 +55,24 @@ func Run() {
 func printHelp() {
 	fmt.Println(`gpad - global markdown notes
 
-Commands:
-  gpad init [--github URL]   Initialize gpad global notes
-  gpad create <path>         Create a new note
-  gpad edit <path>           Edit an existing note
-  gpad view <path>           View a markdown file
+Usage:
+  gpad <path.md>             Create or edit a note instantly
+  gpad view <path.md>        View a markdown file (anywhere)
   gpad list                  List all notes
-  gpad config ...            Configuration commands
-  gpad uninstall [...]       Uninstall gpad
+  gpad init [--github URL]   Initialize notes storage
+  gpad config ...            Configure editor/autopush
+  gpad uninstall             Remove gpad from system
 `)
 }
 
-// placeholders for future logic
-func handleCreate(path string) {
-	if err := notes.Create(path); err != nil {
+func handleOpen(path string) {
+	if err := notes.Open(path); err != nil {
 		fmt.Println("Error:", err)
 	}
 }
+
+// to be implemented later
 func handleView(path string)        { fmt.Println("TODO: view", path) }
-func handleEdit(path string)        { fmt.Println("TODO: edit", path) }
 func handleList()                   { fmt.Println("TODO: list") }
 func handleInit(args []string)      { fmt.Println("TODO: init", args) }
 func handleConfig(args []string)    { fmt.Println("TODO: config", args) }
