@@ -57,7 +57,7 @@ func RenderCustom(input string) (string, error) {
 
 		// H1
 		if strings.HasPrefix(line, "# ") {
-			text := (strings.TrimSpace(line[2:])
+			text := strings.TrimSpace(line[2:])
 			write(Bold + Cyan + text + Reset)
 			continue
 		}
