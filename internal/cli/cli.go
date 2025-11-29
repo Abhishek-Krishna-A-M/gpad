@@ -94,15 +94,20 @@ func extractRepo(url string) string {
 }
 
 func printHelp() {
-	fmt.Println(`gpad - global markdown notes
+	fmt.Println(`gpad - global markdown notes manager
 
 Usage:
-  gpad <path.md>             Create or edit a note instantly
-  gpad view <path.md>        View a markdown file (anywhere)
-  gpad list                  List all notes
-  gpad init [--github URL]   Initialize notes storage
-  gpad config ...            Configure editor/autopush
-  gpad uninstall             Remove gpad from system
+  gpad <path.md>              Create or edit a note instantly
+  gpad view <path.md>         View a markdown file (anywhere)
+  gpad list                   List all notes (tree view)
+  gpad rm [-r] <path>         Delete a note or directory
+  gpad init [--github URL]    Initialize notes storage (offline or GitHub)
+  gpad config ...             Configure editor / autopush
+  gpad sync                   Sync notes (pull + push)
+  gpad uninstall              Remove gpad data from system
+
+For full markdown reference:
+  gpad help markdown
 `)
 }
 
