@@ -217,9 +217,24 @@ func dirNotEmpty(path string) bool {
 
 func handleConfig(args []string) {
 	if len(args) == 0 {
-		fmt.Println("Usage: gpad config autopush on/off")
+		fmt.Println("Usage:")
+		fmt.Println("  gpad config editor <command>")
+		fmt.Println("  gpad config autopush on/off")
 		return
 	}
+
+	if args[0] == "editor" && len(args) >= 2 {
+		cmd := strings.Join(args[1:], " ")
+
+		cfg, _ := config.Load()
+		cfg.Editor = cmd
+		config.Save(cfg)
+
+		fmt.Println("Editor set to:", cmd)
+		return
+	}
+
+
 
 	if args[0] == "autopush" && len(args) == 2 {
 		cfg, _ := config.Load()
