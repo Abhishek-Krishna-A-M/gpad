@@ -76,9 +76,13 @@ func handleView(path string) {
 		fmt.Println("Error:", err)
 	}
 }
+func handleList() {
+	if err := notes.List(); err != nil {
+		fmt.Println("Error:", err)
+	}
+}
 
 // to be implemented later
-func handleList()                   { fmt.Println("TODO: list") }
 func handleInit(args []string)      { fmt.Println("TODO: init", args) }
 func handleConfig(args []string)    { fmt.Println("TODO: config", args) }
 func handleUninstall(args []string) { fmt.Println("TODO: uninstall", args) }
