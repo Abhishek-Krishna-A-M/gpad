@@ -123,6 +123,38 @@ notes/
 
 `.git/` is automatically hidden.
 
+### Delete Notes or Folders
+
+**Delete a single note:**
+
+```sh
+gpad rm ideas/ai.md
+```
+
+**Delete an empty directory:**
+
+```sh
+gpad rm ideas/
+```
+
+**Delete a directory recursively:**
+
+```sh
+gpad rm -r ideas/
+```
+
+**Skip confirmation:**
+
+```sh
+gpad rm -r ideas/ --yes
+```
+
+**Safety rules:**
+
+- Deletion is only allowed inside `~/.gpad/notes`
+- Attempting to delete outside notes directory is blocked
+- Deleting the root notes folder is not allowed
+
 ### Git Sync
 
 **Sync now (pull + push)**
@@ -185,7 +217,7 @@ internal/cli/       → argument parsing + commands
 internal/notes/     → create/edit/list logic
 internal/viewer/    → Markdown terminal renderer
 internal/storage/   → file system paths
-internal/gitrepo/      → git clone/pull/push/merge/SSH
+internal/gitx/      → git clone/pull/push/merge/SSH
 internal/editor/    → editor launcher
 internal/help/      → Markdown help text
 internal/config/    → JSON config loader/saver
