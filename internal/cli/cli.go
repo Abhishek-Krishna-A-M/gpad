@@ -108,27 +108,46 @@ func handleOpen(path string) {
 	}
 }
 func handleView(args []string) {
-	if len(args) == 0 {
-		fmt.Println("Usage: gpad view <note or ->")
-		return
-	}
+    if len(args) == 0 {
+        fmt.Println("Usage: gpad view <file>")
+        return
+    }
 
-	target := args[0]
+    target := args[0]
 
-	if target == "-" {
-		data, err := io.ReadAll(os.Stdin)
-		if err != nil {
-			fmt.Println("Error reading stdin:", err)
-			return
-		}
+    // stdin mode
+    if target == "-" {
+        data, err := io.ReadAll(os.Stdin)
+        if err != nil {
+            fmt.Println("Error reading stdin:", err)
+            return
+        }
+        viewer.ViewRaw(string(data))
+        return
+    }
 
-		viewer.ViewRaw(string(data))
-		return
-	}
+    // absolute file path
+    if filepath.IsAbs(target) {
+        viewer.View(target)
+        return
+    }
 
-	// normal file view
-	viewer.View(storage.AbsPath(target))
+    // relative-path file (local folder)
+    if _, err := os.Stat(target); err == nil {
+        viewer.View(target)
+        return
+    }
+
+    // fallback: gpad notes directory
+    fallback := filepath.Join(storage.NotesDir(), target)
+    if _, err := os.Stat(fallback); err == nil {
+        viewer.View(fallback)
+        return
+    }
+
+    fmt.Println("File not found:", target)
 }
+
 func handleHelp(args []string) {
 	if len(args) == 0 {
 		fmt.Println("Usage: gpad help markdown")
