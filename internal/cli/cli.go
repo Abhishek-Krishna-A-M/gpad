@@ -7,6 +7,9 @@ import (
 	"github.com/Abhishek-Krishna-A-M/gpad/internal/notes"
 	"github.com/Abhishek-Krishna-A-M/gpad/internal/storage"
 	"github.com/Abhishek-Krishna-A-M/gpad/internal/viewer"
+	"github.com/Abhishek-Krishna-A-M/gpad/internal/gitrepo"
+	"github.com/Abhishek-Krishna-A-M/gpad/internal/config"
+
 )
 
 func Run() {
@@ -81,8 +84,80 @@ func handleList() {
 		fmt.Println("Error:", err)
 	}
 }
+func handleInit(args []string) {
+	var repo string
+
+	// Parse flag
+	if len(args) >= 2 && args[0] == "--github" {
+		repo = args[1]
+	}
+
+	notesPath := storage.NotesDir()
+
+	// Offline init
+	if repo == "" {
+		fmt.Println("Initializing gpad in offline mode...")
+		fmt.Println("Notes stored at:", notesPath)
+		return
+	}
+
+	// Git mode
+	fmt.Println("Initializing gpad with GitHub repo:", repo)
+
+	if !gitrepo.Exists() {
+		fmt.Println("Error: git is not installed.")
+		return
+	}
+
+	tmpDir := filepath.Join(storage.GpadDir(), "tmp_clone")
+
+	// Clean temp dir
+	os.RemoveAll(tmpDir)
+	os.MkdirAll(tmpDir, 0755)
+
+	// Clone into tmp
+	if err := gitrepo.Clone(repo, tmpDir); err != nil {
+		fmt.Println("Git clone failed:", err)
+		return
+	}
+
+	// Merge offline notes into tmp clone
+	if dirNotEmpty(notesPath) {
+		fmt.Println("Merging offline notes into GitHub repo...")
+		if err := gitrepo.MergeOfflineIntoRepo(tmpDir, notesPath); err != nil {
+			fmt.Println("Merge failed:", err)
+			return
+		}
+	}
+
+	// Replace notes folder with merged repo
+	os.RemoveAll(notesPath)
+	os.Rename(tmpDir, notesPath)
+
+	// Auto commit merge
+	fmt.Println("Syncing merged notes to GitHub...")
+	gitrepo.AddCommitPush(notesPath, "Import offline notes")
+
+	// Save config
+	cfg, _ := config.Load()
+	cfg.GitEnabled = true
+	cfg.RepoURL = repo
+	config.Save(cfg)
+
+	fmt.Println("GitHub sync enabled. Offline notes merged.")
+}
+func dirNotEmpty(path string) bool {
+	f, err := os.Open(path)
+	if err != nil {
+		return false
+	}
+	defer f.Close()
+
+	// read 1 entry — fast check
+	_, err = f.Readdirnames(1)
+	return err == nil
+}
 
 // to be implemented later
-func handleInit(args []string)      { fmt.Println("TODO: init", args) }
 func handleConfig(args []string)    { fmt.Println("TODO: config", args) }
 func handleUninstall(args []string) { fmt.Println("TODO: uninstall", args) }
