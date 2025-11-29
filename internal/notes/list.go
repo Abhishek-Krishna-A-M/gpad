@@ -4,42 +4,101 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/Abhishek-Krishna-A-M/gpad/internal/storage"
 )
 
-func List() error {
-	root := storage.NotesDir()
+type Node struct {
+	Name     string
+	IsFile   bool
+	Children []*Node
+}
 
-	return filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+func List() error {
+	rootPath := storage.NotesDir()
+	rootNode := &Node{Name: "notes", IsFile: false}
+
+	err := filepath.Walk(rootPath, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
 
-		if path == root {
-			fmt.Println("notes/")
+		if path == rootPath {
 			return nil
 		}
 
-		rel, _ := filepath.Rel(root, path)
+		rel, _ := filepath.Rel(rootPath, path)
+		parts := strings.Split(rel, string(os.PathSeparator))
 
-		if info.IsDir() {
-			fmt.Printf("%s%s/\n", indent(rel), info.Name())
-			return nil
-		}
-
-		if strings.HasSuffix(info.Name(), ".md") {
-			fmt.Printf("%s%s\n", indent(rel), info.Name())
-		}
-
+		insertNode(rootNode, parts, info.IsDir())
 		return nil
 	})
+
+	if err != nil {
+		return err
+	}
+
+	fmt.Println(rootNode.Name + "/")
+	printTree(rootNode.Children, "")
+
+	return nil
 }
 
-func indent(relPath string) string {
-	parts := strings.Split(relPath, string(os.PathSeparator))
-	depth := len(parts) - 1
-	return strings.Repeat("    ", depth)
+func insertNode(parent *Node, parts []string, isDir bool) {
+	if len(parts) == 0 {
+		return
+	}
+
+	name := parts[0]
+	var child *Node
+
+	for _, c := range parent.Children {
+		if c.Name == name {
+			child = c
+			break
+		}
+	}
+
+	if child == nil {
+		child = &Node{
+			Name:   name,
+			IsFile: !isDir,
+		}
+		parent.Children = append(parent.Children, child)
+	}
+
+	if len(parts) > 1 {
+		insertNode(child, parts[1:], isDir)
+	}
 }
 
+func printTree(children []*Node, prefix string) {
+	sort.Slice(children, func(i, j int) bool {
+		if children[i].IsFile == children[j].IsFile {
+			return children[i].Name < children[j].Name
+		}
+		return !children[i].IsFile // dirs first
+	})
+
+	for i, n := range children {
+		isLast := i == len(children)-1
+		var branch, nextPrefix string
+
+		if isLast {
+			branch = "└── "
+			nextPrefix = prefix + "    "
+		} else {
+			branch = "├── "
+			nextPrefix = prefix + "│   "
+		}
+
+		if n.IsFile {
+			fmt.Println(prefix + branch + n.Name)
+		} else {
+			fmt.Println(prefix + branch + n.Name + "/")
+			printTree(n.Children, nextPrefix)
+		}
+	}
+}
