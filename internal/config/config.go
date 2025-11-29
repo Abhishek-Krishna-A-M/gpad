@@ -12,6 +12,7 @@ type Config struct {
 	GitEnabled bool   `json:"git_enabled"`
 	RepoURL    string `json:"repo_url"`
 	Editor     string `json:"editor"`
+	AutoPush   bool   `json:"autopush"`
 }
 
 var configCache *Config

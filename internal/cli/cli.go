@@ -3,6 +3,7 @@ package cli
 import (
 	"fmt"
 	"os"
+	"strings"
 	"path/filepath"
 	"github.com/Abhishek-Krishna-A-M/gpad/internal/notes"
 	"github.com/Abhishek-Krishna-A-M/gpad/internal/storage"
@@ -55,6 +56,29 @@ func Run() {
 		printHelp()
 	}
 }
+func dirExists(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil
+}
+
+func extractUser(url string) string {
+	// https://github.com/user/repo.git → user
+	parts := strings.Split(url, "/")
+	if len(parts) < 5 {
+		return ""
+	}
+	return parts[3]
+}
+
+func extractRepo(url string) string {
+	// https://github.com/user/repo.git → repo.git → repo
+	parts := strings.Split(url, "/")
+	if len(parts) < 5 {
+		return ""
+	}
+	repo := parts[len(parts)-1]
+	return strings.TrimSuffix(repo, ".git")
+}
 
 func printHelp() {
 	fmt.Println(`gpad - global markdown notes
@@ -85,43 +109,76 @@ func handleList() {
 	}
 }
 func handleInit(args []string) {
-	var repo string
+	var repoURL string
 
-	// Parse flag
 	if len(args) >= 2 && args[0] == "--github" {
-		repo = args[1]
+		repoURL = args[1]
 	}
 
 	notesPath := storage.NotesDir()
 
-	// Offline init
-	if repo == "" {
+	// OFFLINE MODE
+	if repoURL == "" {
 		fmt.Println("Initializing gpad in offline mode...")
 		fmt.Println("Notes stored at:", notesPath)
 		return
 	}
 
-	// Git mode
-	fmt.Println("Initializing gpad with GitHub repo:", repo)
+	// GIT MODE
+	fmt.Println("Initializing gpad with GitHub repo:", repoURL)
 
 	if !gitrepo.Exists() {
 		fmt.Println("Error: git is not installed.")
 		return
 	}
 
+	isSSH := strings.HasPrefix(repoURL, "git@github.com:")
+	isHTTPS := strings.HasPrefix(repoURL, "https://github.com/")
+
+	// Warn if HTTPS
+	if isHTTPS {
+		fmt.Println("⚠️  Using HTTPS for GitHub sync.")
+		fmt.Println("You may be prompted for PAT (GitHub token).")
+		fmt.Println("")
+		fmt.Println("Recommended SSH mode:")
+		fmt.Printf("  git@github.com:%s/%s.git\n", extractUser(repoURL), extractRepo(repoURL))
+		fmt.Println("")
+		fmt.Println("Or enable credential caching:")
+		fmt.Println("  git config --global credential.helper store")
+		fmt.Println("")
+	}
+
+	// If repo already exists & is git repo → update remote (don't clone again)
+	if dirExists(filepath.Join(notesPath, ".git")) {
+		if isSSH {
+			fmt.Println("Switching existing repo to SSH mode:", repoURL)
+			if err := gitrepo.SetRemote(notesPath, repoURL); err != nil {
+				fmt.Println("Failed to set SSH remote:", err)
+				return
+			}
+		}
+		cfg, _ := config.Load()
+		cfg.GitEnabled = true
+		cfg.RepoURL = repoURL
+		config.Save(cfg)
+		fmt.Println("GitHub sync is now active.")
+		return
+	}
+
+	// FRESH CLONE FLOW
 	tmpDir := filepath.Join(storage.GpadDir(), "tmp_clone")
 
 	// Clean temp dir
 	os.RemoveAll(tmpDir)
 	os.MkdirAll(tmpDir, 0755)
 
-	// Clone into tmp
-	if err := gitrepo.Clone(repo, tmpDir); err != nil {
+	// Clone to tmp
+	if err := gitrepo.Clone(repoURL, tmpDir); err != nil {
 		fmt.Println("Git clone failed:", err)
 		return
 	}
 
-	// Merge offline notes into tmp clone
+	// Merge offline notes
 	if dirNotEmpty(notesPath) {
 		fmt.Println("Merging offline notes into GitHub repo...")
 		if err := gitrepo.MergeOfflineIntoRepo(tmpDir, notesPath); err != nil {
@@ -130,18 +187,18 @@ func handleInit(args []string) {
 		}
 	}
 
-	// Replace notes folder with merged repo
+	// Replace notes folder
 	os.RemoveAll(notesPath)
 	os.Rename(tmpDir, notesPath)
 
-	// Auto commit merge
+	// Auto commit merged notes
 	fmt.Println("Syncing merged notes to GitHub...")
 	gitrepo.AddCommitPush(notesPath, "Import offline notes")
 
 	// Save config
 	cfg, _ := config.Load()
 	cfg.GitEnabled = true
-	cfg.RepoURL = repo
+	cfg.RepoURL = repoURL
 	config.Save(cfg)
 
 	fmt.Println("GitHub sync enabled. Offline notes merged.")
@@ -158,6 +215,26 @@ func dirNotEmpty(path string) bool {
 	return err == nil
 }
 
+func handleConfig(args []string) {
+	if len(args) == 0 {
+		fmt.Println("Usage: gpad config autopush on/off")
+		return
+	}
+
+	if args[0] == "autopush" && len(args) == 2 {
+		cfg, _ := config.Load()
+		if args[1] == "on" {
+			cfg.AutoPush = true
+		} else {
+			cfg.AutoPush = false
+		}
+		config.Save(cfg)
+		fmt.Println("autopush set to:", cfg.AutoPush)
+		return
+	}
+
+	fmt.Println("Unknown config command")
+}
+
 // to be implemented later
-func handleConfig(args []string)    { fmt.Println("TODO: config", args) }
 func handleUninstall(args []string) { fmt.Println("TODO: uninstall", args) }

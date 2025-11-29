@@ -44,7 +44,7 @@ func AddCommitPush(path, msg string) error {
 }
 
 func SetRemote(path, url string) error {
-	cmd := exec.Command("git", "remote", "add", "origin", url)
+	cmd := exec.Command("git", "remote", "set-url", "origin", url)
 	cmd.Dir = path
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
