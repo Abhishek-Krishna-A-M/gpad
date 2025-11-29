@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"github.com/Abhishek-Krishna-A-M/gpad/internal/notes"
 	"github.com/Abhishek-Krishna-A-M/gpad/internal/storage"
+	"github.com/Abhishek-Krishna-A-M/gpad/internal/viewer"
 )
 
 func Run() {
@@ -70,9 +71,13 @@ func handleOpen(path string) {
 		fmt.Println("Error:", err)
 	}
 }
+func handleView(path string) {
+	if err := viewer.View(path); err != nil {
+		fmt.Println("Error:", err)
+	}
+}
 
 // to be implemented later
-func handleView(path string)        { fmt.Println("TODO: view", path) }
 func handleList()                   { fmt.Println("TODO: list") }
 func handleInit(args []string)      { fmt.Println("TODO: init", args) }
 func handleConfig(args []string)    { fmt.Println("TODO: config", args) }
