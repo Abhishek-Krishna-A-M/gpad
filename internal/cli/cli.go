@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"github.com/Abhishek-Krishna-A-M/gpad/internal/storage"
+	"github.com/Abhishek-Krishna-A-M/gpad/internal/notes"
 )
 
 func Run() {
@@ -74,7 +75,11 @@ Commands:
 }
 
 // placeholders for future logic
-func handleCreate(path string)      { fmt.Println("TODO: create", path) }
+func handleCreate(path string) {
+	if err := notes.Create(path); err != nil {
+		fmt.Println("Error:", err)
+	}
+}
 func handleView(path string)        { fmt.Println("TODO: view", path) }
 func handleEdit(path string)        { fmt.Println("TODO: edit", path) }
 func handleList()                   { fmt.Println("TODO: list") }
