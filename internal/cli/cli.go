@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"io"
+	"bufio"
 	"strings"
 	"path/filepath"
 	"github.com/Abhishek-Krishna-A-M/gpad/internal/notes"
@@ -51,7 +52,7 @@ func Run() {
 		handleConfig(args[1:])
 
 	case "uninstall":
-		handleUninstall(args[1:])
+		handleUninstall()
 
 	case "help":
     handleHelp(args[1:])
@@ -287,5 +288,29 @@ func handleConfig(args []string) {
 	fmt.Println("Unknown config command")
 }
 
-// to be implemented later
-func handleUninstall(args []string) { fmt.Println("TODO: uninstall", args) }
+func handleUninstall() {
+	reader := bufio.NewReader(os.Stdin)
+
+	fmt.Println("This will delete all gpad data at ~/.gpad")
+	fmt.Print("Are you sure? (y/N): ")
+
+	resp, _ := reader.ReadString('\n')
+	resp = strings.TrimSpace(strings.ToLower(resp))
+
+	if resp != "y" && resp != "yes" {
+		fmt.Println("Canceled.")
+		return
+	}
+
+	path := storage.GpadDir()
+	fmt.Println("Removing:", path)
+	os.RemoveAll(path)
+
+	fmt.Println("\nLocal data removed.")
+
+	fmt.Println("\nTo remove the binary, run (depending on installation):")
+	fmt.Println("  rm /usr/local/bin/gpad")
+	fmt.Println("  or remove from your PATH if custom-installed.")
+
+	fmt.Println("\ngpad uninstall complete.")
+}
