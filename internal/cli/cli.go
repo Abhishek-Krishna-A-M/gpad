@@ -3,9 +3,14 @@ package cli
 import (
 	"fmt"
 	"os"
+	"github.com/Abhishek-Krishna-A-M/gpad/internal/storage"
 )
 
 func Run() {
+	if err := storage.EnsureDirs(); err != nil {
+		fmt.Println("Error setting up storage:", err)
+		return
+	}
 	args := os.Args[1:]
 
 	if len(args) == 0 {
