@@ -3,12 +3,14 @@ package cli
 import (
 	"fmt"
 	"os"
+	"io"
 	"strings"
 	"path/filepath"
 	"github.com/Abhishek-Krishna-A-M/gpad/internal/notes"
 	"github.com/Abhishek-Krishna-A-M/gpad/internal/storage"
 	"github.com/Abhishek-Krishna-A-M/gpad/internal/viewer"
 	"github.com/Abhishek-Krishna-A-M/gpad/internal/gitrepo"
+	"github.com/Abhishek-Krishna-A-M/gpad/internal/help"
 	"github.com/Abhishek-Krishna-A-M/gpad/internal/config"
 
 )
@@ -37,7 +39,7 @@ func Run() {
 			fmt.Println("Usage: gpad view <file>")
 			return
 		}
-		handleView(args[1])
+		handleView(args[1:])
 
 	case "list":
 		handleList()
@@ -50,6 +52,9 @@ func Run() {
 
 	case "uninstall":
 		handleUninstall(args[1:])
+
+	case "help":
+    handleHelp(args[1:])
 
 	default:
 		fmt.Println("Unknown command:", args[0])
@@ -98,11 +103,42 @@ func handleOpen(path string) {
 		fmt.Println("Error:", err)
 	}
 }
-func handleView(path string) {
-	if err := viewer.View(path); err != nil {
-		fmt.Println("Error:", err)
+func handleView(args []string) {
+	if len(args) == 0 {
+		fmt.Println("Usage: gpad view <note or ->")
+		return
 	}
+
+	target := args[0]
+
+	if target == "-" {
+		data, err := io.ReadAll(os.Stdin)
+		if err != nil {
+			fmt.Println("Error reading stdin:", err)
+			return
+		}
+
+		viewer.ViewRaw(string(data))
+		return
+	}
+
+	// normal file view
+	viewer.View(storage.AbsPath(target))
 }
+func handleHelp(args []string) {
+	if len(args) == 0 {
+		fmt.Println("Usage: gpad help markdown")
+		return
+	}
+
+	if args[0] == "markdown" {
+		help.Markdown()
+		return
+	}
+
+	fmt.Println("Unknown help topic")
+}
+
 func handleList() {
 	if err := notes.List(); err != nil {
 		fmt.Println("Error:", err)

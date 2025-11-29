@@ -33,4 +33,9 @@ func EnsureDirs() error {
 	}
 	return nil
 }
-
+func AbsPath(rel string) string {
+	if filepath.IsAbs(rel) {
+		return rel
+	}
+	return filepath.Join(NotesDir(), rel)
+}

@@ -38,3 +38,12 @@ func promptEdit(path string) error {
 
 	return nil
 }
+
+func ViewRaw(text string) {
+	if rendered, err := RenderCustom(text); err == nil {
+		fmt.Println(rendered)
+		return
+	}
+	fmt.Println(text)
+}
+
