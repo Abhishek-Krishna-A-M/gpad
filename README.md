@@ -185,7 +185,7 @@ internal/cli/       → argument parsing + commands
 internal/notes/     → create/edit/list logic
 internal/viewer/    → Markdown terminal renderer
 internal/storage/   → file system paths
-internal/gitx/      → git clone/pull/push/merge/SSH
+internal/gitrepo/      → git clone/pull/push/merge/SSH
 internal/editor/    → editor launcher
 internal/help/      → Markdown help text
 internal/config/    → JSON config loader/saver
