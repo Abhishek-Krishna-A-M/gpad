@@ -26,6 +26,13 @@ func InitRepo(path string) error {
 }
 
 func AddCommitPush(path, msg string) error {
+
+	cmd := exec.Command("git", "pull", "--no-rebase")
+    cmd.Dir = path
+    cmd.Stdout = os.Stdout
+    cmd.Stderr = os.Stderr
+    _ = cmd.Run()
+
 	cmd := exec.Command("git", "add", ".")
 	cmd.Dir = path
 	if err := cmd.Run(); err != nil {

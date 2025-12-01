@@ -6,7 +6,7 @@ import (
 )
 
 func Pull(path string) error {
-	cmd := exec.Command("git", "pull")
+	cmd := exec.Command("git", "pull","--no-rebase")
 	cmd.Dir = path
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr

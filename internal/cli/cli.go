@@ -46,6 +46,10 @@ func Run() {
 		handleDelete(args[1:])
 		return
 
+	case "mv", "rename", "move":
+		handleRename(args[1:])
+		return
+
 	case "sync":
 		handleSync(args[1:])
 
