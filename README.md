@@ -1,225 +1,116 @@
-<div align="center">
-
+<div align="center"
 # gpad
 
-**A fast, cross-platform, Git-powered CLI notes manager written in Go.**
+> A fast, cross-platform, Git-powered CLI notes manager written in Go.
 
-Take notes from anywhere.  
-Sync across devices using GitHub (SSH or HTTPS).  
-Render Markdown in the terminal.  
-Zero bloat. One static binary. Works everywhere.
+- 📝 Take notes from anywhere.
+- 🔄 Sync across devices using GitHub (SSH or HTTPS).
+- 🖥️ Render Markdown directly in your terminal.
+- ⚡ Zero bloat. One static binary. Works everywhere.
 
 </div>
-
 ---
 
 ## Features
 
-- Notes stored as Markdown inside a folder (`~/.gpad/notes`)
-- Tree view of notes with nested directories (`ideas/ai.md`, etc.)
-- Create & edit notes using your preferred editor (nvim, code, micro…)
-- Terminal Markdown viewer (clean headings, lists, quotes, blocks)
-- Offline mode OR GitHub sync mode
-- Auto sync (git add → commit → push) after editing
-- Manual sync (`gpad sync`, `gpad sync log`)
-- HTTPS or SSH Git support (with auto-switch to SSH)
-- Uninstall command
-- STDIN viewer support  
-  ```sh
-  echo "# Hi" | gpad view -
-  ```
-
-Built for speed, simplicity, and developer workflows.
+- **Structured Storage** — Notes are stored as Markdown inside `~/.gpad/notes`.
+- **Flexible Editing** — Create and edit notes using your preferred editor (`nvim`, `code`, `micro`, etc.).
+- **Terminal Viewer** — Clean headings, lists, and code blocks rendered with ANSI colors.
+- **Smart Pager** — Automatically uses `less -R` so you can scroll through long notes.
+- **Auto Sync** — Optional background `git add → commit → push` after every edit.
+- **Manual Sync** — Dedicated `gpad sync` command for manual pulls and pushes.
+- **Safety First** — Deletion is restricted to the notes directory to prevent accidental data loss.
 
 ---
 
 ## Installation
 
-### Linux / macOS
+**Linux / macOS:**
 
-Install with the official script:
-
-```sh
+```bash
 curl -fsSL https://raw.githubusercontent.com/Abhishek-Krishna-A-M/gpad/main/install.sh | sh
 ```
 
-Or install manually:
-
-```sh
-go install github.com/Abhishek-Krishna-A-M/gpad/cmd/gpad@latest
-```
-
-### Windows (PowerShell)
+**Windows (PowerShell):**
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File install.ps1
 ```
 
-Or download the `.exe` from [Releases](https://github.com/Abhishek-Krishna-A-M/gpad/releases) and add it to PATH.
-
 ---
 
 ## Usage
 
-### Initialize gpad
+### 1. Initialize gpad
 
-**Offline mode (default)**
+gpad auto-initializes for offline use. For Git sync, run:
 
-```sh
-gpad init
+```bash
+# GitHub sync mode (SSH recommended)
+gpad git init git@github.com:user/notes.git
 ```
 
-**GitHub sync mode (HTTPS or SSH)**
+### 2. Create or Edit a Note
 
-```sh
-gpad init --github https://github.com/user/notes.git
+One command handles both — if the file doesn't exist, gpad creates it for you:
+
+```bash
+gpad open college/math.md
 ```
 
-Recommended (no passwords required):
+> Running `gpad open` without arguments lists your notes and folders interactively.
 
-```sh
-gpad init --github git@github.com:user/notes.git
+### 3. View a Note
+
+View rendered Markdown in the terminal. After viewing, gpad will ask if you'd like to open the file for editing:
+
+```bash
+gpad view college/math.md
 ```
 
-If HTTPS is used, gpad will show credential helper instructions.
+### 4. Git Syncing
 
-### Create or Edit Note
+Manage your repository manually or toggle automation:
 
-One command handles both:
-
-```sh
-gpad ideas/ai.md
-```
-
-- If the file exists → edit it.
-- If not → create it.
-
-### View Notes
-
-```sh
-gpad view ideas/ai.md
-```
-
-Or view piped Markdown:
-
-```sh
-echo "# Hi" | gpad view -
-```
-
-### List Notes (Tree View)
-
-```sh
-gpad list
-```
-
-Example output:
-
-```
-notes/
-├── ideas/
-│   └── ai.md
-└── test.md
-```
-
-`.git/` is automatically hidden.
-
-### Delete Notes or Folders
-
-**Delete a single note:**
-
-```sh
-gpad rm ideas/ai.md
-```
-
-**Delete an empty directory:**
-
-```sh
-gpad rm ideas/
-```
-
-**Delete a directory recursively:**
-
-```sh
-gpad rm -r ideas/
-```
-
-**Skip confirmation:**
-
-```sh
-gpad rm -r ideas/ --yes
-```
-
-**Safety rules:**
-
-- Deletion is only allowed inside `~/.gpad/notes`
-- Attempting to delete outside notes directory is blocked
-- Deleting the root notes folder is not allowed
-
-### Git Sync
-
-**Sync now (pull + push)**
-
-```sh
+```bash
+# Manual Pull/Push
 gpad sync
+
+# Toggle Auto-Push on/off
+gpad config autopush on
 ```
 
-**Show recent sync logs**
+### 5. Management
 
-```sh
-gpad sync log
+```bash
+# Delete a note (with safety checks)
+gpad rm college/math.md
+
+# Show Markdown syntax guide
+gpad help markdown
 ```
 
 ---
 
 ## Configuration
 
-### Set default editor
-
-```sh
-gpad config editor nvim
-gpad config editor "code -w"
-```
-
-### Toggle auto-push
-
-```sh
-gpad config autopush on
-gpad config autopush off
-```
+| Command | Description |
+|---|---|
+| `gpad config editor nvim` | Set your preferred editor |
+| `gpad config autopush on` | Enable automatic Git push after edits |
 
 ---
-
-## Uninstall
-
-```sh
-gpad uninstall
-```
-
-Removes all gpad data (`~/.gpad`) but not the binary.
-
----
-
-## Markdown Help
-
-```sh
-gpad help markdown
-```
-
-Shows a beginner-friendly Markdown reference.
-
-
 
 ## Contributing
 
-Issues & PRs welcome.  
-Please follow Go best practices and minimize dependencies.
+Issues and PRs are welcome! This project follows a modular Go structure:
+
+- **`internal/cmd`** — CLI command definitions (Cobra).
+- **`internal/core`** — Business logic (Sync, Git operations).
+- **`internal/viewer`** — Markdown rendering logic.
 
 ---
 
 ## License
 
-MIT License.
-
----
-
-**gpad** — minimal, fast, developer-friendly notes.
+[MIT License](LICENSE)
