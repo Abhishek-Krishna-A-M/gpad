@@ -1,5 +1,6 @@
 <div align="center">
-# gpad
+
+  # gpad
 
 > A fast, cross-platform, Git-powered CLI notes manager written in Go.
 
