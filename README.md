@@ -1,4 +1,4 @@
-<div align="center"
+<div align="center">
 # gpad
 
 > A fast, cross-platform, Git-powered CLI notes manager written in Go.
