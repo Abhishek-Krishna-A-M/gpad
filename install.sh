@@ -52,5 +52,5 @@ sudo mv "$BIN_NAME" "$INSTALL_DIR/"
 echo ">>> Installation complete!"
 
 echo ""
-echo "Run 'gpad init' to start."
+echo "Run 'gpad' to start."
 
