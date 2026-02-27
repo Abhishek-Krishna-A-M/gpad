@@ -27,7 +27,7 @@ func Open(relPath string) error {
 	}
 
 	// 3. Background Sync: Only pushes if AutoPush is enabled in config
-	go core.AutoSave(relPath)
+	core.AutoSave("Update " + relPath)
 	
 	return nil
 }

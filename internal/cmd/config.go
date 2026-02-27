@@ -25,8 +25,19 @@ var setEditorCmd = &cobra.Command{
 		return err
 	},
 }
-
+var autopushCmd = &cobra.Command{
+    Use:   "autopush [on/off]",
+    Short: "Toggle automatic git pushing",
+    Args:  cobra.ExactArgs(1),
+    RunE: func(cmd *cobra.Command, args []string) error {
+        val := args[0] == "on"
+        cfg, _ := config.Load()
+        cfg.AutoPush = val
+        return config.Save(cfg)
+    },
+}
 func init() {
 	configCmd.AddCommand(setEditorCmd)
 	rootCmd.AddCommand(configCmd)
+	configCmd.AddCommand(autopushCmd)
 }
