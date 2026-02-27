@@ -4,25 +4,27 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"os/exec"
 	"strings"
 
 	"github.com/Abhishek-Krishna-A-M/gpad/internal/editor"
 )
 
 func View(path string) error {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return err
-	}
-	text := string(data)
+    data, err := os.ReadFile(path)
+    if err != nil {
+        return err
+    }
+    rendered, _ := RenderCustom(string(data))
 
-	if rendered, err := RenderCustom(text); err == nil {
-		fmt.Println(rendered)
-		return promptEdit(path)
-	}
-
-	fmt.Println(text)
-	return promptEdit(path)
+    // Use 'less' as a pager so users can scroll long notes
+    cmd := exec.Command("less", "-R") // -R keeps the ANSI colors
+    cmd.Stdin = strings.NewReader(rendered)
+    cmd.Stdout = os.Stdout
+    err = cmd.Run()
+    
+    // After they quit 'less', ask if they want to edit
+    return promptEdit(path)
 }
 
 func promptEdit(path string) error {

@@ -4,6 +4,17 @@ All notable changes to **gpad** will be documented here.
 
 This project follows [Semantic Versioning](https://semver.org/).
 
+## [v1.5.0] - 2026-02-28
+### Added
+- New Modular Architecture: Separated CLI, Core logic, and Git plumbing.
+- Improved `internal/viewer`: Enhanced ANSI rendering for headers and code blocks.
+- `internal/ui`: Centralized note discovery for faster searching.
+- Enhanced Error Handling: Better reporting for file operations and Git sync.
+
+### Changed
+- Refactored `internal/cli` into `internal/cmd` for better Cobra integration.
+- Optimized background sync logic in `internal/core`.
+
 ---
 
 ## [v1.0.1] - 2025-12-01

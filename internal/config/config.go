@@ -28,16 +28,16 @@ func Load() (*Config, error) {
 
 	file := path()
 	data, err := os.ReadFile(file)
-	if err != nil {
-		c := &Config{
-			GitEnabled: false,
-			RepoURL:    "",
-			Editor:     "",
-		}
-		configCache = c
-		return c, nil
-	}
-
+if err != nil {
+    c := &Config{
+        GitEnabled: false,
+        RepoURL:    "",
+        Editor:     "vim", // Provide a default editor
+        AutoPush:   true,  // Default to true for the "sync magic"
+    }
+    configCache = c
+    return c, nil
+}
 	var cfg Config
 	if err := json.Unmarshal(data, &cfg); err != nil {
 		return nil, err

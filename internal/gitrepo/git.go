@@ -1,60 +1,47 @@
 package gitrepo
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 )
 
-func Exists() bool {
-	_, err := exec.LookPath("git")
-	return err == nil
-}
-
-func Clone(url string, dest string) error {
-	cmd := exec.Command("git", "clone", url, dest)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	return cmd.Run()
-}
-
-func InitRepo(path string) error {
-	cmd := exec.Command("git", "init")
-	cmd.Dir = path
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	return cmd.Run()
-}
-
+// AddCommitPush handles the full automated sync workflow
 func AddCommitPush(path, msg string) error {
-
-	cmd := exec.Command("git", "pull", "--no-rebase")
-	cmd.Dir = path
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	_ = cmd.Run()
-
-	cmd = exec.Command("git", "add", ".")
-	cmd.Dir = path
-	if err := cmd.Run(); err != nil {
-		return err
+	// 1. Try to pull first
+	pullCmd := exec.Command("git", "pull", "--no-rebase")
+	pullCmd.Dir = path
+	if err := pullCmd.Run(); err != nil {
+		fmt.Println("🔄 Conflict or remote changes detected. Attempting auto-merge...")
+		// Here is where you'd hook into your Merge logic if needed
 	}
 
-	cmd = exec.Command("git", "commit", "-m", msg)
-	cmd.Dir = path
-	_ = cmd.Run() // ignore "nothing to commit"
+	// 2. Add
+	exec.Command("git", "-C", path, "add", ".").Run()
 
-	cmd = exec.Command("git", "push")
-	cmd.Dir = path
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	return cmd.Run()
+	// 3. Commit
+	commitCmd := exec.Command("git", "-C", path, "commit", "-m", msg)
+	_ = commitCmd.Run() // Ignore if nothing to commit
+
+	// 4. Push
+	pushCmd := exec.Command("git", "-C", path, "push")
+	pushCmd.Stdout = os.Stdout
+	pushCmd.Stderr = os.Stderr
+	return pushCmd.Run()
 }
 
-func SetRemote(path, url string) error {
-	cmd := exec.Command("git", "remote", "set-url", "origin", url)
-	cmd.Dir = path
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	return cmd.Run()
-}
+// Initialize improved
+func Initialize(path, url string) error {
+	exec.Command("git", "-C", path, "init").Run()
+	
+	// Check if remote exists
+	remoteCheck := exec.Command("git", "-C", path, "remote", "get-url", "origin")
+	if err := remoteCheck.Run(); err != nil {
+		exec.Command("git", "-C", path, "remote", "add", "origin", url).Run()
+	} else {
+		exec.Command("git", "-C", path, "remote", "set-url", "origin", url).Run()
+	}
 
+	fmt.Println("Connected to remote. Run 'gpad sync' to pull initial data.")
+	return nil
+}

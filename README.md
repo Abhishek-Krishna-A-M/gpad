@@ -207,34 +207,7 @@ gpad help markdown
 
 Shows a beginner-friendly Markdown reference.
 
----
 
-## Architecture Overview
-
-```
-cmd/gpad/           → main CLI entrypoint
-internal/cli/       → argument parsing + commands
-internal/notes/     → create/edit/list logic
-internal/viewer/    → Markdown terminal renderer
-internal/storage/   → file system paths
-internal/gitx/      → git clone/pull/push/merge/SSH
-internal/editor/    → editor launcher
-internal/help/      → Markdown help text
-internal/config/    → JSON config loader/saver
-```
-
----
-
-## Roadmap (v2)
-
-- Theme system (colors & styles)
-- Rclone cloud backend (Google Drive, S3, etc.)
-- Full-text search (ripgrep integration)
-- TUI viewer (optional)
-- Note templates
-- Image/PDF handling
-
----
 
 ## Contributing
 

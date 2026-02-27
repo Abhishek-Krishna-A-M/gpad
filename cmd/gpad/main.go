@@ -1,7 +1,9 @@
 package main
 
-import "github.com/Abhishek-Krishna-A-M/gpad/internal/cli"
+import (
+	"github.com/Abhishek-Krishna-A-M/gpad/internal/cmd"
+)
 
-func main(){
-	cli.Run()
+func main() {
+	cmd.Execute()
 }

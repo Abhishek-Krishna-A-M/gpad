@@ -1,70 +1,30 @@
 package help
 
-import "fmt"
+func GetMarkdownGuide() string {
+	return `
+# Markdown Basics
+================
 
-func Markdown() {
-	fmt.Println(`
-Markdown Basics
-===============
-
-Headings
---------
+## Headings
 # Heading 1
 ## Heading 2
 ### Heading 3
 
-
-Text Formatting
----------------
-**bold**  
-*italic*  
-~~strikethrough~~  
+## Text Formatting
+**bold** *italic* ~~strikethrough~~  
 ` + "`inline code`" + `
 
-
-Lists
------
+## Lists
 - item 1
 - item 2
   - nested item
 
-
-Code Blocks
------------
-Use triple backticks in real Markdown:
-
-~~~
+## Code Blocks
+` + "```" + `
 code here
-~~~
+` + "```" + `
 
-
-Links & Images
---------------
-[OpenAI](https://openai.com)  
-![Image alt](image.png)
-
-
-Quotes
-------
+## Quotes
 > quoted text
-
-
-Tables
-------
-| Name | Age |
-|------|-----|
-| Ana  | 22  |
-| Ben  | 30  |
-
-
-Horizontal Rule
----------------
----
-
-
-Escaping Characters
--------------------
-Use backslash before characters:
-\*  \_  \#  \` + "`" + `
-`)
+`
 }
