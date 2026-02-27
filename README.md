@@ -1,14 +1,13 @@
 <div align="center">
-
+  
   # gpad
-
+  
 > A fast, cross-platform, Git-powered CLI notes manager written in Go.
 
-- 📝 Take notes from anywhere.
-- 🔄 Sync across devices using GitHub (SSH or HTTPS).
-- 🖥️ Render Markdown directly in your terminal.
-- ⚡ Zero bloat. One static binary. Works everywhere.
-
+ 📝 Take notes from anywhere.
+ 🔄 Sync across devices using GitHub (SSH or HTTPS).
+ 🖥️ Render Markdown directly in your terminal.
+ ⚡ Zero bloat. One static binary. Works everywhere.
 </div>
 ---
 
