@@ -1,24 +1,20 @@
 package gitrepo
 
 import (
+	"bufio"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
-	"bufio"
 )
 
+// MergeOfflineIntoRepo copies offline notes into the repo with conflict prompts.
 func MergeOfflineIntoRepo(repoDir, offlineDir string) error {
 	return filepath.Walk(offlineDir, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
+		if err != nil || path == offlineDir {
 			return err
 		}
-
-		if path == offlineDir {
-			return nil
-		}
-
 		rel, _ := filepath.Rel(offlineDir, path)
 		target := filepath.Join(repoDir, rel)
 
@@ -26,77 +22,54 @@ func MergeOfflineIntoRepo(repoDir, offlineDir string) error {
 			return os.MkdirAll(target, 0755)
 		}
 
-		if fileExists(target) {
-			choice := askConflict(rel)
-
-			switch choice {
-			case 1: // keep remote (do nothing)
+		if _, err := os.Stat(target); err == nil {
+			switch askConflict(rel) {
+			case 1:
 				return nil
-
-			case 2: // keep offline (overwrite)
+			case 2:
 				return copyFile(path, target)
-
-			case 3: // keep both → rename
+			case 3:
 				ext := filepath.Ext(rel)
-				name := rel[:len(rel)-len(ext)]
-
-				localPath := filepath.Join(repoDir, name+"_local"+ext)
-				remotePath := filepath.Join(repoDir, name+"_remote"+ext)
-
-				os.Rename(target, remotePath)
-
-				return copyFile(path, localPath)
+				base := rel[:len(rel)-len(ext)]
+				_ = os.Rename(target, filepath.Join(repoDir, base+"_remote"+ext))
+				return copyFile(path, filepath.Join(repoDir, base+"_local"+ext))
 			}
 			return nil
 		}
-
 		return copyFile(path, target)
 	})
 }
 
-func fileExists(path string) bool {
-	_, err := os.Stat(path)
-	return err == nil
-}
-
 func copyFile(src, dst string) error {
-	// ensure folder
-	os.MkdirAll(filepath.Dir(dst), 0755)
-
+	_ = os.MkdirAll(filepath.Dir(dst), 0755)
 	in, err := os.Open(src)
 	if err != nil {
 		return err
 	}
 	defer in.Close()
-
 	out, err := os.Create(dst)
 	if err != nil {
 		return err
 	}
 	defer out.Close()
-
 	_, err = io.Copy(out, in)
 	return err
 }
 
 func askConflict(name string) int {
-	fmt.Println("Conflict:", name)
-	fmt.Println("  1 = keep GitHub version")
-	fmt.Println("  2 = keep offline version")
-	fmt.Println("  3 = keep both (local/remote)")
-	fmt.Print("> ")
-
+	fmt.Printf("Conflict: %s\n  1 keep remote  2 keep local  3 keep both\n> ", name)
 	reader := bufio.NewReader(os.Stdin)
 	for {
 		line, _ := reader.ReadString('\n')
-		line = strings.TrimSpace(line)
-
-		switch line {
-		case "1", "2", "3":
-			return int(line[0] - '0')
+		switch strings.TrimSpace(line) {
+		case "1":
+			return 1
+		case "2":
+			return 2
+		case "3":
+			return 3
 		default:
 			fmt.Print("Choose 1, 2, or 3: ")
 		}
 	}
 }
-

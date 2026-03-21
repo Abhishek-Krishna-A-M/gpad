@@ -2,41 +2,34 @@ package core
 
 import (
 	"fmt"
+
 	"github.com/Abhishek-Krishna-A-M/gpad/internal/config"
 	"github.com/Abhishek-Krishna-A-M/gpad/internal/gitrepo"
 	"github.com/Abhishek-Krishna-A-M/gpad/internal/storage"
 )
 
-// Sync handles the "Smart Pull" logic
+// Sync pulls from remote. Silent no-op when git is not configured.
 func Sync() error {
 	cfg, _ := config.Load()
 	if !cfg.GitEnabled {
-		return nil // Silently skip if git isn't set up
-	}
-
-	notesDir := storage.NotesDir()
-	
-	// Standard pull
-	err := gitrepo.Pull(notesDir)
-	if err == nil {
 		return nil
 	}
-
-	// If there's a conflict, you could trigger your merge logic here
-	fmt.Println("Sync conflict detected. Please resolve manually in the git repo.")
-	return err
+	return gitrepo.Pull(storage.NotesDir())
 }
 
-// autoCommit is the internal helper used by Move, Delete, and Copy
+// autoCommit stages, commits, and pushes if autopush is on.
 func autoCommit(msg string) error {
 	cfg, _ := config.Load()
-	if cfg.GitEnabled && cfg.AutoPush {
-		return gitrepo.AddCommitPush(storage.NotesDir(), msg)
+	if !cfg.GitEnabled || !cfg.AutoPush {
+		return nil
 	}
-	return nil
+	return gitrepo.AddCommitPush(storage.NotesDir(), msg)
 }
 
-// AutoSave is used by the 'open' command for background pushes
+// AutoSave is called by 'open' after editing — errors are swallowed so
+// the user never sees a push failure block their workflow.
 func AutoSave(msg string) {
-	_ = autoCommit(msg)
+	if err := autoCommit(msg); err != nil {
+		fmt.Println("sync:", err)
+	}
 }

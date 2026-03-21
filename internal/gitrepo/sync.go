@@ -5,6 +5,7 @@ import (
 	"os/exec"
 )
 
+// Pull fetches and merges from remote.
 func Pull(path string) error {
 	cmd := exec.Command("git", "pull", "--no-rebase")
 	cmd.Dir = path

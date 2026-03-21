@@ -1,36 +1,48 @@
 <div align="center">
 
-# gpad
+# gpad 2.0
 
-**A fast, cross-platform, Git-powered CLI notes manager written in Go.**
+**A terminal-native knowledge vault for people who live in the shell.**
 
-Take notes from anywhere.  
-Sync across devices using GitHub (SSH or HTTPS).  
-Render Markdown in the terminal.  
-Zero bloat. One static binary. Works everywhere.
+Wikilinks. Backlinks. Tags. Daily notes. Full-text search. ASCII graphs.  
+Git-synced across machines — or fully offline. One static binary. Zero bloat.
 
 </div>
 
 ---
 
-## Features
+## What's new in 2.0
 
-- **Structured Storage** — Notes are stored as Markdown inside `~/.gpad/notes`.
-- **Flexible Editing** — Create and edit notes using your preferred editor (`nvim`, `code`, `micro`, etc.).
-- **Terminal Viewer** — Clean headings, lists, and code blocks rendered with ANSI colors.
-- **Smart Pager** — Automatically uses `less -R` so you can scroll through long notes.
-- **Auto Sync** — Optional background `git add → commit → push` after every edit.
-- **Manual Sync** — Dedicated `gpad sync` command for manual pulls and pushes.
-- **Safety First** — Deletion is restricted to the notes directory to prevent accidental data loss.
+| Feature | Command |
+|---|---|
+| `[[Wikilinks]]` between notes | auto-resolved, bidirectional |
+| Backlinks panel | shown at the bottom of every `view` |
+| Tag system (`#tag` + frontmatter) | `gpad tags`, `gpad tag add` |
+| Daily notes | `gpad today` |
+| Full-text + fuzzy search | `gpad find` |
+| Note templates | `gpad new -t meeting` |
+| Pinned notes (★ in tree) | `gpad pin` |
+| ASCII link graph | `gpad graph` |
+| Word count + stats in viewer | shown on every `view` |
+| Frontmatter on every note | title, date, tags — auto-added |
 
 ---
 
 ## Installation
 
-**Linux / macOS:**
+**Linux / macOS (pre-built binary):**
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/Abhishek-Krishna-A-M/gpad/main/install.sh | sh
+```
+
+**Build from source (requires Go 1.22+):**
+
+```bash
+git clone https://github.com/Abhishek-Krishna-A-M/gpad
+cd gpad
+go build -o gpad ./cmd/gpad/
+sudo mv gpad /usr/local/bin/
 ```
 
 **Windows (PowerShell):**
@@ -41,78 +53,253 @@ powershell -ExecutionPolicy Bypass -File install.ps1
 
 ---
 
-## Usage
-
-### 1. Initialize gpad
-
-gpad auto-initializes for offline use. For Git sync, run:
+## Quick start
 
 ```bash
-# GitHub sync mode (SSH recommended)
-gpad git init git@github.com:user/notes.git
+# gpad works immediately with no setup — notes live in ~/.gpad/notes/
+gpad today                        # open today's daily note
+gpad open ideas/my-first-note.md  # open or create any note
+gpad ls                           # browse your vault as a tree
 ```
 
-### 2. Create or Edit a Note
-
-One command handles both — if the file doesn't exist, gpad creates it for you:
+**Connect git sync (optional):**
 
 ```bash
-gpad open college/math.md
-```
-
-> Running `gpad open` without arguments lists your notes and folders interactively.
-
-### 3. View a Note
-
-View rendered Markdown in the terminal. After viewing, gpad will ask if you'd like to open the file for editing:
-
-```bash
-gpad view college/math.md
-```
-
-### 4. Git Syncing
-
-Manage your repository manually or toggle automation:
-
-```bash
-# Manual Pull/Push
-gpad sync
-
-# Toggle Auto-Push on/off
-gpad config autopush on
-```
-
-### 5. Management
-
-```bash
-# Delete a note (with safety checks)
-gpad rm college/math.md
-
-# Show Markdown syntax guide
-gpad help markdown
+gpad git init git@github.com:you/notes.git
+# every save now pushes automatically
 ```
 
 ---
 
-## Configuration
+## Full command reference
 
-| Command | Description |
-|---|---|
-| `gpad config editor nvim` | Set your preferred editor |
-| `gpad config autopush on` | Enable automatic Git push after edits |
+### Notes
+
+```bash
+gpad open <note>              # open or create a note (syncs before + after)
+gpad new <note>               # create with template picker
+gpad new <note> -t meeting    # create with a specific template
+gpad view <note>              # render markdown + backlinks + stats in terminal
+gpad ls                       # tree view of vault (★ = pinned)
+```
+
+### Daily notes
+
+```bash
+gpad today                    # open today's note (creates if missing)
+gpad today yesterday          # open yesterday's note
+gpad today list               # show last 14 daily notes
+```
+
+### Search
+
+```bash
+gpad find <query>             # full-text body search + fuzzy title match
+gpad find -f <query>          # fuzzy title only
+gpad find -t <query>          # full-text body only
+```
+
+### Wikilinks & graph
+
+```bash
+gpad links <note>             # show backlinks and outlinks for a note
+gpad graph                    # ASCII graph of the full vault
+gpad graph <note>             # ego graph: note + immediate neighbours
+```
+
+In any note, use `[[note name]]` to link. Aliases and anchors work too:
+
+```markdown
+See [[college/math]] for the proof.
+This relates to [[quantum-foam|quantum mechanics]].
+The key equation is in [[physics#energy]].
+```
+
+### Tags
+
+```bash
+gpad tags                     # full tag index with counts
+gpad tags <tag>               # list notes with this tag
+gpad tag add <tag> <note>     # add tag to frontmatter
+gpad tag rm <tag> <note>      # remove tag from frontmatter
+```
+
+Tags can live in frontmatter or inline — both are indexed:
+
+```markdown
+---
+tags: [go, cli, tools]
+---
+
+This is also #programming related.
+```
+
+### Pinned notes
+
+```bash
+gpad pin <note>               # pin a note (shows ★ in ls)
+gpad unpin <note>             # unpin
+gpad pinned                   # list all pinned notes
+```
+
+### File management
+
+```bash
+gpad mv <src> <dest>          # move or rename (updates H1 title too)
+gpad cp <src> <dest>          # copy a note
+gpad rm <note>                # delete (prompts for confirmation)
+gpad rm -r <folder>           # delete folder recursively
+gpad rm -y <note>             # delete without prompt
+```
+
+### Templates
+
+Four built-in templates are seeded on first run: `note`, `daily`, `meeting`, `idea`.
+
+```bash
+gpad template list            # list available templates
+gpad template new <n>         # create a new template (opens in editor)
+gpad template edit <n>        # edit existing template
+gpad template delete <n>      # delete a template
+```
+
+Template placeholders:
+
+```
+{{title}}   → note title (derived from filename)
+{{date}}    → today's date (YYYY-MM-DD)
+{{time}}    → current time (HH:MM)
+{{cursor}}  → stripped on write (marks where cursor lands)
+```
+
+### Git sync
+
+```bash
+gpad git init <url>           # connect remote (SSH or HTTPS)
+gpad git status               # show remote + autopush state
+gpad sync                     # manual pull + push
+gpad config autopush on       # push automatically on every save
+gpad config autopush off      # manual sync only
+```
+
+gpad works fully **offline** with no git setup. Add git any time.
+
+### Configuration
+
+```bash
+gpad config editor nvim       # set preferred editor
+gpad config autopush on       # enable auto-push
+gpad config show              # print current config
+```
+
+Priority order for editor: `config.json` → `$EDITOR` → `$VISUAL` → nvim/vim/micro/nano.
+
+### Shell completion
+
+```bash
+# Zsh
+source <(gpad completion zsh)
+
+# Bash
+source <(gpad completion bash)
+
+# Fish
+gpad completion fish | source
+```
+
+### Syntax guide
+
+```bash
+gpad markdown                 # full markdown + gpad syntax reference
+```
+
+---
+
+## Vault layout
+
+```
+~/.gpad/
+├── config.json               # editor, git settings, pinned list
+├── index.json                # link/tag index cache (auto-built)
+├── templates/
+│   ├── note.md
+│   ├── daily.md
+│   ├── meeting.md
+│   └── idea.md
+└── notes/
+    ├── daily/
+    │   ├── 2026-03-22.md
+    │   └── 2026-03-21.md
+    ├── college/
+    │   └── math.md
+    └── ideas.md
+```
+
+---
+
+## Frontmatter
+
+Every note gets a frontmatter block (auto-added on first open if absent):
+
+```yaml
+---
+title: Quantum Foam
+date: 2026-03-22
+tags: [physics, ideas]
+pinned: false
+---
+```
+
+---
+
+## Project structure
+
+```
+.
+├── cmd/gpad/main.go          # entry point
+└── internal/
+    ├── cmd/                  # CLI (Cobra commands)
+    │   ├── root.go           # root command + version
+    │   ├── open.go           # gpad open
+    │   ├── new.go            # gpad new
+    │   ├── today.go          # gpad today
+    │   ├── find.go           # gpad find
+    │   ├── links.go          # gpad links
+    │   ├── tags.go           # gpad tags / tag
+    │   ├── pin.go            # gpad pin / unpin / pinned
+    │   ├── graph.go          # gpad graph
+    │   ├── template.go       # gpad template
+    │   ├── view.go           # gpad view
+    │   ├── ls.go             # gpad ls
+    │   ├── git.go            # gpad git
+    │   ├── sync.go           # gpad sync
+    │   ├── config.go         # gpad config
+    │   └── misc.go           # mv, cp, rm, completion, markdown
+    ├── config/               # config.json load/save, pin list
+    ├── core/                 # move, delete, copy, sync logic
+    ├── daily/                # daily note open/create/list
+    ├── editor/               # editor detection + open
+    ├── frontmatter/          # YAML frontmatter parse/write
+    ├── gitrepo/              # git init, add/commit/push, merge
+    ├── help/                 # markdown syntax guide text
+    ├── links/                # [[wikilink]] parse, link graph
+    ├── notes/                # note open/create/stats, tree list
+    ├── search/               # full-text + fuzzy search
+    ├── storage/              # path helpers (~/.gpad/...)
+    ├── tags/                 # tag index across vault
+    ├── templates/            # template apply/save/list
+    ├── ui/                   # note path listing for completion
+    └── viewer/               # ANSI markdown renderer + pager
+```
 
 ---
 
 ## Contributing
 
-Issues and PRs are welcome! This project follows a modular Go structure:
-
-- **`internal/cmd`** — CLI command definitions (Cobra).
-- **`internal/core`** — Business logic (Sync, Git operations).
-- **`internal/viewer`** — Markdown rendering logic.
+Issues and PRs welcome. The architecture is modular — each package has one job and no circular dependencies. Core packages (`frontmatter`, `links`, `tags`, `search`, `storage`) never import CLI packages.
 
 ---
 
 ## License
 
-[MIT License](LICENSE)
+[MIT](LICENSE)

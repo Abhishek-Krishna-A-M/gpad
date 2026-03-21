@@ -1,56 +1,80 @@
 #!/usr/bin/env sh
-
 set -e
 
 REPO="Abhishek-Krishna-A-M/gpad"
-BIN_NAME="gpad"
+BINARY="gpad"
 INSTALL_DIR="/usr/local/bin"
 
-echo ">>> Detecting OS and Architecture..."
+# ── detect OS and arch ───────────────────────────────────────────────────────
 
 OS="$(uname -s)"
 ARCH="$(uname -m)"
 
 case "$OS" in
-    Linux*)   OS="linux" ;;
-    Darwin*)  OS="macos" ;;
-    *) echo "Unsupported OS: $OS"; exit 1 ;;
+  Linux)  OS="linux" ;;
+  Darwin) OS="darwin" ;;
+  *)
+    echo "Unsupported OS: $OS"
+    exit 1
+    ;;
 esac
 
 case "$ARCH" in
-    x86_64) ARCH="amd64" ;;
-    aarch64|arm64) ARCH="arm64" ;;
-    *) echo "Unsupported architecture: $ARCH"; exit 1 ;;
+  x86_64)  ARCH="amd64" ;;
+  aarch64|arm64) ARCH="arm64" ;;
+  *)
+    echo "Unsupported architecture: $ARCH"
+    exit 1
+    ;;
 esac
 
-echo ">>> OS: $OS"
-echo ">>> ARCH: $ARCH"
+# ── fetch latest release tag ─────────────────────────────────────────────────
 
-echo ">>> Fetching latest version tag..."
-TAG=$(curl -s https://api.github.com/repos/$REPO/releases/latest | grep -oP '"tag_name": "\K(.*)(?=")')
+echo "Fetching latest gpad release..."
 
-if [ -z "$TAG" ]; then
-    echo "Failed to fetch latest release tag"
-    exit 1
+LATEST=$(curl -fsSL "https://api.github.com/repos/${REPO}/releases/latest" \
+  | grep '"tag_name"' \
+  | sed -E 's/.*"tag_name": *"([^"]+)".*/\1/')
+
+if [ -z "$LATEST" ]; then
+  echo "Could not determine latest release. Check your internet connection."
+  exit 1
 fi
 
-echo ">>> Latest version: $TAG"
+echo "Latest release: $LATEST"
 
-FILE="${BIN_NAME}-${OS}-${ARCH}"
+# ── download and install ─────────────────────────────────────────────────────
 
-DOWNLOAD_URL="https://github.com/${REPO}/releases/download/${TAG}/${FILE}"
+URL="https://github.com/${REPO}/releases/download/${LATEST}/gpad_${OS}_${ARCH}"
 
-echo ">>> Downloading: $DOWNLOAD_URL"
-curl -L "$DOWNLOAD_URL" -o "$BIN_NAME"
+TMP="$(mktemp)"
+echo "Downloading gpad ${LATEST} (${OS}/${ARCH})..."
+curl -fsSL "$URL" -o "$TMP"
+chmod +x "$TMP"
 
-echo ">>> Making executable..."
-chmod +x "$BIN_NAME"
+# ── pick install location ─────────────────────────────────────────────────────
 
-echo ">>> Installing to $INSTALL_DIR..."
-sudo mv "$BIN_NAME" "$INSTALL_DIR/"
+if [ -w "$INSTALL_DIR" ]; then
+  mv "$TMP" "${INSTALL_DIR}/${BINARY}"
+else
+  echo "Installing to ${INSTALL_DIR} (needs sudo)..."
+  sudo mv "$TMP" "${INSTALL_DIR}/${BINARY}"
+fi
 
-echo ">>> Installation complete!"
+# ── verify ───────────────────────────────────────────────────────────────────
 
-echo ""
-echo "Run 'gpad' to start."
-
+if command -v gpad >/dev/null 2>&1; then
+  echo ""
+  echo "  gpad $(gpad --version 2>/dev/null | head -1) installed successfully."
+  echo ""
+  echo "  Get started:"
+  echo "    gpad today               open today's daily note"
+  echo "    gpad open my-note.md     create your first note"
+  echo "    gpad git init <url>      connect git sync (optional)"
+  echo ""
+else
+  echo ""
+  echo "  Installed to ${INSTALL_DIR}/gpad"
+  echo "  Make sure ${INSTALL_DIR} is in your PATH."
+  echo ""
+fi

@@ -8,41 +8,35 @@ import (
 	"github.com/Abhishek-Krishna-A-M/gpad/internal/config"
 )
 
+// Open opens path in the best available editor.
 func Open(path string) error {
 	cfg, _ := config.Load()
 
-	// 1. Preferred editor from config
 	if cfg.Editor != "" {
-		return runCommand(cfg.Editor, path)
+		return run(cfg.Editor, path)
 	}
-
-	// 2. System $EDITOR
 	if ed := os.Getenv("EDITOR"); ed != "" {
-		return runCommand(ed, path)
+		return run(ed, path)
+	}
+	if ed := os.Getenv("VISUAL"); ed != "" {
+		return run(ed, path)
 	}
 
-	// 3. Fallback editors
-	choices := []string{"nvim", "vim", "micro", "nano"}
-
-	for _, e := range choices {
+	for _, e := range []string{"nvim", "vim", "micro", "nano"} {
 		if exists(e) {
 			return exec.Command(e, path).Run()
 		}
 	}
-
-	// 4. Last fallback: raw text open (not ideal)
 	return exec.Command("nano", path).Run()
 }
 
-func runCommand(cmdStr, file string) error {
-	parts := strings.Split(cmdStr, " ")
+func run(cmdStr, file string) error {
+	parts := strings.Fields(cmdStr)
 	parts = append(parts, file)
-
 	cmd := exec.Command(parts[0], parts[1:]...)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-
 	return cmd.Run()
 }
 

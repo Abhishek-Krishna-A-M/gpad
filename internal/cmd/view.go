@@ -7,12 +7,13 @@ import (
 )
 
 var viewCmd = &cobra.Command{
-	Use:   "view [note]",
-	Short: "View a note with markdown rendering",
-	Args:  cobra.ExactArgs(1),
+	Use:   "view <note>",
+	Short: "Render a note in the terminal",
+	Long: `Render a note with markdown formatting, wikilinks, tags,
+backlinks panel, and word-count stats. Uses less for scrolling.`,
+	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		absPath := storage.AbsPath(args[0])
-		return viewer.View(absPath)
+		return viewer.View(storage.AbsPath(args[0]))
 	},
 }
 

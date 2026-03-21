@@ -1,67 +1,66 @@
-# PowerShell installer for gpad
-# Usage:
-#   powershell -ExecutionPolicy Bypass -File install.ps1
-
 $ErrorActionPreference = "Stop"
 
-$repo = "Abhishek-Krishna-A-M/gpad"
-$binName = "gpad.exe"
-$installDir = "$env:LOCALAPPDATA\Programs\gpad"
+$Repo   = "Abhishek-Krishna-A-M/gpad"
+$Binary = "gpad.exe"
+$InstallDir = "$env:LOCALAPPDATA\gpad"
 
-Write-Host ">>> Detecting Architecture..."
+# ── detect arch ──────────────────────────────────────────────────────────────
 
-$arch = $env:PROCESSOR_ARCHITECTURE
-
-switch ($arch) {
-    "AMD64" { $arch = "amd64" }
-    "ARM64" { $arch = "arm64" }
-    default {
-        Write-Error "Unsupported architecture: $arch"
-        exit 1
-    }
+$Arch = if ([System.Environment]::Is64BitOperatingSystem) { "amd64" } else {
+  Write-Host "Only 64-bit Windows is supported."
+  exit 1
 }
 
-Write-Host ">>> Architecture: $arch"
+# ── fetch latest release ──────────────────────────────────────────────────────
 
-Write-Host ">>> Fetching latest version tag..."
-$latest = Invoke-RestMethod -Uri "https://api.github.com/repos/$repo/releases/latest"
+Write-Host "Fetching latest gpad release..."
 
-$tag = $latest.tag_name
-if (-not $tag) {
-    Write-Error "Failed to retrieve latest release tag."
-    exit 1
+try {
+  $Release = Invoke-RestMethod -Uri "https://api.github.com/repos/$Repo/releases/latest"
+  $Tag = $Release.tag_name
+} catch {
+  Write-Host "Could not reach GitHub API. Check your internet connection."
+  exit 1
 }
 
-Write-Host ">>> Latest Version: $tag"
+Write-Host "Latest release: $Tag"
 
-$file = "gpad-windows-$arch.exe"
-$downloadUrl = "https://github.com/$repo/releases/download/$tag/$file"
+# ── download ──────────────────────────────────────────────────────────────────
 
-Write-Host ">>> Downloading $downloadUrl"
+$Url = "https://github.com/$Repo/releases/download/$Tag/gpad_windows_$Arch.exe"
+$TmpFile = "$env:TEMP\gpad_install.exe"
 
-$tempPath = Join-Path $env:TEMP $binName
-Invoke-WebRequest -Uri $downloadUrl -OutFile $tempPath
+Write-Host "Downloading gpad $Tag (windows/$Arch)..."
+Invoke-WebRequest -Uri $Url -OutFile $TmpFile -UseBasicParsing
 
-Write-Host ">>> Creating install directory..."
-New-Item -ItemType Directory -Path $installDir -Force | Out-Null
+# ── install ───────────────────────────────────────────────────────────────────
 
-Write-Host ">>> Installing gpad to $installDir"
-Copy-Item $tempPath "$installDir\$binName" -Force
-
-Write-Host ">>> Checking PATH..."
-
-$path = [Environment]::GetEnvironmentVariable("Path", "User")
-
-if ($path -notlike "*$installDir*") {
-    Write-Host ">>> Adding gpad to PATH..."
-    $newPath = "$path;$installDir"
-    [Environment]::SetEnvironmentVariable("Path", $newPath, "User")
-    Write-Host ">>> PATH updated. You may need to restart your terminal."
-} else {
-    Write-Host ">>> PATH already contains gpad directory."
+if (-not (Test-Path $InstallDir)) {
+  New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
 }
+
+Move-Item -Force $TmpFile "$InstallDir\$Binary"
+
+# ── add to PATH if needed ─────────────────────────────────────────────────────
+
+$CurrentPath = [System.Environment]::GetEnvironmentVariable("PATH", "User")
+if ($CurrentPath -notlike "*$InstallDir*") {
+  [System.Environment]::SetEnvironmentVariable(
+    "PATH",
+    "$CurrentPath;$InstallDir",
+    "User"
+  )
+  Write-Host "Added $InstallDir to your PATH."
+  Write-Host "Restart your terminal for the PATH change to take effect."
+}
+
+# ── done ──────────────────────────────────────────────────────────────────────
 
 Write-Host ""
-Write-Host ">>> Installation complete!"
-Write-Host "Run 'gpad' in a new terminal window."
-
+Write-Host "  gpad installed to $InstallDir\$Binary"
+Write-Host ""
+Write-Host "  Get started:"
+Write-Host "    gpad today               open today's daily note"
+Write-Host "    gpad open my-note.md     create your first note"
+Write-Host "    gpad git init <url>      connect git sync (optional)"
+Write-Host ""
