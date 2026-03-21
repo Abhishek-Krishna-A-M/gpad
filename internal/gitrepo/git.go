@@ -10,8 +10,10 @@ import (
 // Initialize sets up git in the notes directory with a remote.
 // Works whether or not the directory already has a repo.
 func Initialize(path, url string) error {
-	// init (idempotent)
-	run(path, "git", "init")
+	// init with explicit main branch (git >= 2.28)
+	run(path, "git", "init", "-b", "main")
+	// fallback rename for older git versions (no-op if already main)
+	run(path, "git", "branch", "-M", "main")
 
 	// configure remote
 	remoteCheck := exec.Command("git", "-C", path, "remote", "get-url", "origin")
@@ -34,8 +36,8 @@ func Initialize(path, url string) error {
 		run(path, "git", "commit", "--allow-empty", "-m", "gpad: init vault")
 	}
 
-	// attempt initial pull (non-fatal — remote may be empty)
-	pullCmd := exec.Command("git", "-C", path, "pull", "--no-rebase", "origin")
+	// attempt initial pull from main (non-fatal — remote may be empty)
+	pullCmd := exec.Command("git", "-C", path, "pull", "--no-rebase", "origin", "main")
 	pullOut, _ := pullCmd.CombinedOutput()
 	if strings.Contains(string(pullOut), "error") {
 		fmt.Println("Remote is empty or unreachable — will push on first sync.")
@@ -44,11 +46,11 @@ func Initialize(path, url string) error {
 	return nil
 }
 
-// AddCommitPush stages everything, commits, and pushes.
-// It pulls first to minimize conflicts.
+// AddCommitPush stages everything, commits, and pushes to main.
+// It pulls first to minimise conflicts.
 func AddCommitPush(path, msg string) error {
-	// pull latest
-	pullCmd := exec.Command("git", "-C", path, "pull", "--no-rebase")
+	// pull latest from main
+	pullCmd := exec.Command("git", "-C", path, "pull", "--no-rebase", "origin", "main")
 	pullCmd.Dir = path
 	if out, err := pullCmd.CombinedOutput(); err != nil {
 		outStr := string(out)
@@ -56,7 +58,7 @@ func AddCommitPush(path, msg string) error {
 			fmt.Println("⚠  Merge conflict detected — resolve manually in", path)
 			return fmt.Errorf("merge conflict")
 		}
-		// non-fatal (offline, empty remote, etc.)
+		// non-fatal: offline, empty remote, etc.
 	}
 
 	run(path, "git", "add", ".")
@@ -67,7 +69,8 @@ func AddCommitPush(path, msg string) error {
 		return nil
 	}
 
-	pushCmd := exec.Command("git", "-C", path, "push", "--set-upstream", "origin", "HEAD")
+	// always push to main explicitly — never rely on tracking branch default
+	pushCmd := exec.Command("git", "-C", path, "push", "--set-upstream", "origin", "main")
 	pushCmd.Stdout = os.Stdout
 	pushCmd.Stderr = os.Stderr
 	return pushCmd.Run()

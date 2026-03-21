@@ -11,16 +11,30 @@ import (
 	"github.com/Abhishek-Krishna-A-M/gpad/internal/storage"
 )
 
+// safePrefix returns the notes root with a trailing separator,
+// so /notes/daily passes but /notes-other does not.
+func safePrefix() string {
+	return filepath.Clean(storage.NotesDir()) + string(filepath.Separator)
+}
+
+// inVault reports whether abs is inside (or equal to) the notes root.
+func inVault(abs string) bool {
+	clean := filepath.Clean(abs)
+	root := filepath.Clean(storage.NotesDir())
+	return clean == root || strings.HasPrefix(clean, root+string(filepath.Separator))
+}
+
 // Move moves one or more notes/folders to destination.
 func Move(targets []string, destRel string) error {
-	notesRoot := storage.NotesDir()
-	destAbs := filepath.Clean(filepath.Join(notesRoot, destRel))
+	destAbs := filepath.Clean(filepath.Join(storage.NotesDir(), destRel))
+	if !inVault(destAbs) {
+		return fmt.Errorf("destination is outside the notes directory")
+	}
 
 	for _, srcRel := range targets {
-		srcAbs := filepath.Clean(filepath.Join(notesRoot, srcRel))
-
-		if !strings.HasPrefix(srcAbs, notesRoot) || !strings.HasPrefix(destAbs, notesRoot) {
-			return fmt.Errorf("operation restricted to notes directory")
+		srcAbs := filepath.Clean(filepath.Join(storage.NotesDir(), srcRel))
+		if !inVault(srcAbs) {
+			return fmt.Errorf("source %q is outside the notes directory", srcRel)
 		}
 
 		actualDest := destAbs
@@ -44,13 +58,21 @@ func Move(targets []string, destRel string) error {
 
 // Delete removes targets (files or dirs with -r).
 func Delete(targets []string, recursive bool) error {
-	notesRoot := storage.NotesDir()
 	for _, t := range targets {
-		abs := filepath.Clean(filepath.Join(notesRoot, t))
-		if !strings.HasPrefix(abs, notesRoot) {
-			return fmt.Errorf("operation restricted to notes directory")
+		abs := filepath.Clean(filepath.Join(storage.NotesDir(), t))
+		if !inVault(abs) {
+			return fmt.Errorf("%q is outside the notes directory", t)
 		}
-		var err error
+
+		info, err := os.Stat(abs)
+		if err != nil {
+			return fmt.Errorf("%q not found", t)
+		}
+
+		if info.IsDir() && !recursive {
+			return fmt.Errorf("%q is a directory — use -r to delete directories", t)
+		}
+
 		if recursive {
 			err = os.RemoveAll(abs)
 		} else {
@@ -68,6 +90,10 @@ func Copy(srcRel, destRel string) error {
 	notesRoot := storage.NotesDir()
 	src := filepath.Join(notesRoot, srcRel)
 	dest := filepath.Join(notesRoot, destRel)
+
+	if !inVault(src) || !inVault(dest) {
+		return fmt.Errorf("operation restricted to notes directory")
+	}
 
 	in, err := os.Open(src)
 	if err != nil {
