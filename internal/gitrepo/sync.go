@@ -6,13 +6,16 @@ import (
 )
 
 // Pull fetches and merges from origin/main.
-// Also fixes any stale tracking branch pointing to master.
+// --allow-unrelated-histories handles the case where the local vault
+// and the remote were initialised separately (common on first sync).
 func Pull(path string) error {
-	// fix stale tracking config that still points to master
-	fixCmd := exec.Command("git", "-C", path, "branch", "--set-upstream-to=origin/main", "main")
-	_ = fixCmd.Run()
+	// fix any stale tracking branch still pointing to master
+	_ = exec.Command("git", "-C", path, "branch", "--set-upstream-to=origin/main", "main").Run()
 
-	cmd := exec.Command("git", "-C", path, "pull", "origin", "main", "--no-rebase")
+	cmd := exec.Command("git", "-C", path, "pull", "origin", "main",
+		"--no-rebase",
+		"--allow-unrelated-histories",
+	)
 	cmd.Dir = path
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr

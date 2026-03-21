@@ -37,7 +37,7 @@ func Initialize(path, url string) error {
 	}
 
 	// attempt initial pull from main (non-fatal — remote may be empty)
-	pullCmd := exec.Command("git", "-C", path, "pull", "--no-rebase", "origin", "main")
+	pullCmd := exec.Command("git", "-C", path, "pull", "origin", "main", "--no-rebase", "--allow-unrelated-histories")
 	pullOut, _ := pullCmd.CombinedOutput()
 	if strings.Contains(string(pullOut), "error") {
 		fmt.Println("Remote is empty or unreachable — will push on first sync.")
@@ -50,7 +50,7 @@ func Initialize(path, url string) error {
 // It pulls first to minimise conflicts.
 func AddCommitPush(path, msg string) error {
 	// pull latest from main
-	pullCmd := exec.Command("git", "-C", path, "pull", "--no-rebase", "origin", "main")
+	pullCmd := exec.Command("git", "-C", path, "pull", "origin", "main", "--no-rebase", "--allow-unrelated-histories")
 	pullCmd.Dir = path
 	if out, err := pullCmd.CombinedOutput(); err != nil {
 		outStr := string(out)
