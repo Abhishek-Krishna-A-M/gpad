@@ -1,71 +1,40 @@
-// Package tags builds a tag → []notes index across the vault.
-// Tags are sourced from YAML frontmatter AND inline #hashtags in body text.
+// Package tags builds and queries the tag index across the vault.
+// Backed by the persistent index cache — fast on large vaults.
 package tags
 
 import (
-	"os"
-	"path/filepath"
 	"sort"
 	"strings"
 
 	"github.com/Abhishek-Krishna-A-M/gpad/internal/frontmatter"
+	"github.com/Abhishek-Krishna-A-M/gpad/internal/index"
 	"github.com/Abhishek-Krishna-A-M/gpad/internal/storage"
+	"path/filepath"
 )
 
 // Index maps tag → sorted list of relative note paths.
 type Index map[string][]string
 
-// Build walks the entire vault and constructs the tag index.
+// Build returns the tag index from the persistent cache.
 func Build() Index {
-	notesRoot := storage.NotesDir()
-	idx := Index{}
-
-	_ = filepath.Walk(notesRoot, func(path string, info os.FileInfo, err error) error {
-		if err != nil || info.IsDir() {
-			return nil
-		}
-		if strings.Contains(path, "/.git/") {
-			return filepath.SkipDir
-		}
-		if !strings.HasSuffix(path, ".md") {
-			return nil
-		}
-
-		rel, _ := filepath.Rel(notesRoot, path)
-		meta, body, err := frontmatter.Parse(path)
-		if err != nil {
-			return nil
-		}
-
-		// collect all tags for this note (deduped)
-		seen := map[string]bool{}
-		for _, t := range meta.Tags {
-			seen[strings.ToLower(t)] = true
-		}
-		for _, t := range frontmatter.InlineTags(body) {
-			seen[t] = true
-		}
-
-		for tag := range seen {
-			idx[tag] = append(idx[tag], rel)
-		}
-		return nil
-	})
-
-	// sort note lists per tag
-	for tag := range idx {
-		sort.Strings(idx[tag])
+	raw := index.TagIndex()
+	idx := make(Index, len(raw))
+	for t, notes := range raw {
+		sorted := make([]string, len(notes))
+		copy(sorted, notes)
+		sort.Strings(sorted)
+		idx[t] = sorted
 	}
 	return idx
 }
 
-// NotesForTag returns all relative note paths that carry tag (case-insensitive).
+// NotesForTag returns notes tagged with tag (case-insensitive).
 func NotesForTag(tag string) []string {
 	tag = strings.ToLower(strings.TrimPrefix(tag, "#"))
 	return Build()[tag]
 }
 
-// TagsForNote returns all tags on a single note.
+// TagsForNote returns all tags on a single note (frontmatter + inline).
 func TagsForNote(relPath string) []string {
 	absPath := filepath.Join(storage.NotesDir(), relPath)
 	meta, body, err := frontmatter.Parse(absPath)

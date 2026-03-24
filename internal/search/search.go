@@ -1,28 +1,27 @@
-// Package search provides full-text search and fuzzy title filtering
-// across the gpad vault without any external dependencies.
+// Package search provides full-text and fuzzy search backed by the index cache.
 package search
 
 import (
 	"os"
-	"path/filepath"
 	"sort"
 	"strings"
 	"unicode"
 
-	"github.com/Abhishek-Krishna-A-M/gpad/internal/frontmatter"
+	"github.com/Abhishek-Krishna-A-M/gpad/internal/index"
 	"github.com/Abhishek-Krishna-A-M/gpad/internal/storage"
+	"path/filepath"
 )
 
 // Result is a single search hit.
 type Result struct {
 	RelPath string
 	Title   string
-	Excerpt string // surrounding context line
-	Score   int    // higher = better match
+	Excerpt string
+	Score   int
 }
 
-// FullText searches every note's body for query string (case-insensitive).
-// Returns results sorted by score (match count descending).
+// FullText searches every note's body for query (case-insensitive).
+// Uses the index for the note list but reads files for body content.
 func FullText(query string) []Result {
 	if query == "" {
 		return nil
@@ -31,46 +30,26 @@ func FullText(query string) []Result {
 	q := strings.ToLower(query)
 	var results []Result
 
-	_ = filepath.Walk(notesRoot, func(path string, info os.FileInfo, err error) error {
-		if err != nil || info.IsDir() {
-			return nil
-		}
-		if strings.Contains(path, "/.git/") {
-			return filepath.SkipDir
-		}
-		if !strings.HasSuffix(path, ".md") {
-			return nil
-		}
-
-		data, err := os.ReadFile(path)
+	notes := index.AllNotes()
+	for _, n := range notes {
+		absPath := filepath.Join(notesRoot, n.RelPath)
+		data, err := os.ReadFile(absPath)
 		if err != nil {
-			return nil
+			continue
 		}
-
 		content := string(data)
 		lower := strings.ToLower(content)
 		count := strings.Count(lower, q)
 		if count == 0 {
-			return nil
+			continue
 		}
-
-		rel, _ := filepath.Rel(notesRoot, path)
-		meta, _, _ := frontmatter.Parse(path)
-		title := meta.Title
-		if title == "" {
-			title = strings.TrimSuffix(filepath.Base(path), ".md")
-		}
-
-		excerpt := extractExcerpt(content, query)
-
 		results = append(results, Result{
-			RelPath: rel,
-			Title:   title,
-			Excerpt: excerpt,
+			RelPath: n.RelPath,
+			Title:   n.Title,
+			Excerpt: extractExcerpt(content, query),
 			Score:   count,
 		})
-		return nil
-	})
+	}
 
 	sort.Slice(results, func(i, j int) bool {
 		return results[i].Score > results[j].Score
@@ -78,19 +57,18 @@ func FullText(query string) []Result {
 	return results
 }
 
-// Fuzzy filters a list of note paths by a fuzzy pattern against their name.
-// Scores subsequence matches — typed chars must appear in order in the target.
-func Fuzzy(pattern string, notes []string) []Result {
+// Fuzzy filters notes by a fuzzy pattern against their title and path.
+func Fuzzy(pattern string, notePaths []string) []Result {
 	if pattern == "" {
-		out := make([]Result, 0, len(notes))
-		for _, n := range notes {
-			out = append(out, Result{RelPath: n, Score: 0})
+		out := make([]Result, 0, len(notePaths))
+		for _, n := range notePaths {
+			out = append(out, Result{RelPath: n})
 		}
 		return out
 	}
 	p := strings.ToLower(pattern)
 	var results []Result
-	for _, note := range notes {
+	for _, note := range notePaths {
 		score := fuzzyScore(p, strings.ToLower(note))
 		if score > 0 {
 			results = append(results, Result{RelPath: note, Score: score})
@@ -102,8 +80,6 @@ func Fuzzy(pattern string, notes []string) []Result {
 	return results
 }
 
-// fuzzyScore returns a positive score if pattern is a subsequence of target.
-// Consecutive matches and prefix matches score higher.
 func fuzzyScore(pattern, target string) int {
 	if pattern == "" {
 		return 1
@@ -112,37 +88,40 @@ func fuzzyScore(pattern, target string) int {
 	score := 0
 	consecutive := 0
 	pr := []rune(pattern)
-	tr := []rune(target)
-
-	for ti, tc := range tr {
+	for ti, tc := range target {
 		if pi < len(pr) && unicode.ToLower(tc) == unicode.ToLower(pr[pi]) {
 			pi++
 			consecutive++
 			score += consecutive * 2
 			if ti == 0 {
-				score += 5 // prefix bonus
+				score += 5
 			}
 		} else {
 			consecutive = 0
 		}
 	}
 	if pi != len(pr) {
-		return 0 // not a subsequence
+		return 0
 	}
-	// exact match bonus
 	if target == pattern {
 		score += 100
 	}
 	return score
 }
 
-// extractExcerpt finds the line containing query and returns a trimmed snippet.
 func extractExcerpt(content, query string) string {
 	lines := strings.Split(content, "\n")
 	q := strings.ToLower(query)
 	for _, line := range lines {
 		if strings.Contains(strings.ToLower(line), q) {
 			trimmed := strings.TrimSpace(line)
+			// skip frontmatter lines
+			if strings.HasPrefix(trimmed, "---") {
+				continue
+			}
+			if strings.Contains(trimmed, ":") && len(trimmed) < 40 {
+				continue
+			}
 			if len(trimmed) > 120 {
 				idx := strings.Index(strings.ToLower(trimmed), q)
 				start := idx - 30
@@ -155,33 +134,19 @@ func extractExcerpt(content, query string) string {
 				}
 				trimmed = "…" + trimmed[start:end] + "…"
 			}
-			// skip frontmatter lines
-			if strings.HasPrefix(trimmed, "---") || strings.Contains(trimmed, ":") && len(trimmed) < 40 {
-				continue
-			}
 			return trimmed
 		}
 	}
 	return ""
 }
 
-// AllNotePaths returns relative paths of all .md files in the vault.
+// AllNotePaths returns relative paths of all notes from the index cache.
 func AllNotePaths() []string {
-	notesRoot := storage.NotesDir()
-	var paths []string
-	_ = filepath.Walk(notesRoot, func(path string, info os.FileInfo, err error) error {
-		if err != nil || info.IsDir() {
-			return nil
-		}
-		if strings.Contains(path, "/.git/") {
-			return filepath.SkipDir
-		}
-		if strings.HasSuffix(path, ".md") {
-			rel, _ := filepath.Rel(notesRoot, path)
-			paths = append(paths, rel)
-		}
-		return nil
-	})
+	notes := index.AllNotes()
+	paths := make([]string, 0, len(notes))
+	for _, n := range notes {
+		paths = append(paths, n.RelPath)
+	}
 	sort.Strings(paths)
 	return paths
 }

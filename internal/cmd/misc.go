@@ -94,26 +94,11 @@ var helpMdCmd = &cobra.Command{
 var completionCmd = &cobra.Command{
 	Use:   "completion [bash|zsh|fish|powershell]",
 	Short: "Generate shell completion script",
-	Long: `Generate a shell completion script and source it to enable tab completion.
- 
-Bash (add to ~/.bashrc):
-  source <(gpad completion bash)
- 
-Zsh (add to ~/.zshrc):
-  source <(gpad completion zsh)
- 
-Fish:
-  gpad completion fish | source
- 
-PowerShell:
-  gpad completion powershell | Out-String | Invoke-Expression`,
-	Args:      cobra.ExactValidArgs(1),
-	ValidArgs: []string{"bash", "zsh", "fish", "powershell"},
+	Args:  cobra.ExactValidArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		switch args[0] {
 		case "bash":
-			// V2 is self-contained — no bash-completion package required
-			rootCmd.GenBashCompletionV2(os.Stdout, true)
+			rootCmd.GenBashCompletion(os.Stdout)
 		case "zsh":
 			rootCmd.GenZshCompletion(os.Stdout)
 		case "fish":

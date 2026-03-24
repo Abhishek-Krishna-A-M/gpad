@@ -1,51 +1,52 @@
 <div align="center">
 
-# gpad 2.0
+<img src="https://img.shields.io/badge/built%20with-Go-00ADD8?style=flat-square&logo=go" />
+<img src="https://img.shields.io/badge/license-MIT-green?style=flat-square" />
+<img src="https://img.shields.io/badge/platform-Linux%20%7C%20macOS%20%7C%20Windows-lightgrey?style=flat-square" />
 
-**A terminal-native knowledge vault for people who live in the shell.**
+# gpad
 
-Wikilinks. Backlinks. Tags. Daily notes. Full-text search. ASCII graphs.  
-Git-synced across machines — or fully offline. One static binary. Zero bloat.
+**A terminal-native knowledge vault.**
+
+Write notes in Markdown. Connect them with `[[wikilinks]]`. Tag them with `#tags`.  
+Navigate everything in a full-screen TUI. Sync across machines with Git.  
+Zero config to start. One static binary.
 
 </div>
 
 ---
 
-## What's new in 2.0
+## Why gpad
 
-| Feature | Command |
-|---|---|
-| `[[Wikilinks]]` between notes | auto-resolved, bidirectional |
-| Backlinks panel | shown at the bottom of every `view` |
-| Tag system (`#tag` + frontmatter) | `gpad tags`, `gpad tag add` |
-| Daily notes | `gpad today` |
-| Full-text + fuzzy search | `gpad find` |
-| Note templates | `gpad new -t meeting` |
-| Pinned notes (★ in tree) | `gpad pin` |
-| ASCII link graph | `gpad graph` |
-| Word count + stats in viewer | shown on every `view` |
-| Frontmatter on every note | title, date, tags — auto-added |
+Most note tools are either too simple (just files) or too heavy (Electron apps, databases, subscriptions). gpad is for people who live in the terminal and want Obsidian-style linking and tagging without leaving the shell.
+
+- **Plain Markdown files** — open with any editor, grep with any tool, version with any Git host
+- **Full-screen TUI** — file tree, live preview, panels for search/tags/graph/links all in one
+- **`[[wikilinks]]`** — write them while taking notes, gpad builds the graph automatically
+- **Git sync** — every save pushes in the background, or sync manually, or work offline forever
+- **Fast** — built in Go, no runtime, opens instantly
 
 ---
 
 ## Installation
 
-**Linux / macOS (pre-built binary):**
+**Build from source (Go 1.22+):**
+
+```bash
+git clone https://github.com/Abhishek-Krishna-A-M/gpad
+cd gpad
+go mod tidy
+go build -o gpad ./cmd/gpad/
+sudo mv gpad /usr/local/bin/
+```
+
+**Linux / macOS:**
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/Abhishek-Krishna-A-M/gpad/main/install.sh | sh
 ```
 
-**Build from source (requires Go 1.22+):**
-
-```bash
-git clone https://github.com/Abhishek-Krishna-A-M/gpad
-cd gpad
-go build -o gpad ./cmd/gpad/
-sudo mv gpad /usr/local/bin/
-```
-
-**Windows (PowerShell):**
+**Windows:**
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File install.ps1
@@ -56,162 +57,344 @@ powershell -ExecutionPolicy Bypass -File install.ps1
 ## Quick start
 
 ```bash
-# gpad works immediately with no setup — notes live in ~/.gpad/notes/
-gpad today                        # open today's daily note
-gpad open ideas/my-first-note.md  # open or create any note
-gpad ls                           # browse your vault as a tree
-```
-
-**Connect git sync (optional):**
-
-```bash
-gpad git init git@github.com:you/notes.git
-# every save now pushes automatically
+gpad                      # open the TUI
+gpad today                # open today's daily note
+gpad open ideas.md        # create and open a note from the shell
+gpad git init git@github.com:you/notes.git   # connect git sync
 ```
 
 ---
 
-## Full command reference
+## The TUI
+
+`gpad` with no arguments opens the full-screen TUI. Press `?` for the full help screen.
+
+```
++-------------------------------------------------------------+
+| gpad /                                    42 notes    v     |
++------------------+------------------------------------------+
+| v daily/         | quantum-foam                             |
+|   2026-03-22.md  | ─────────────                            |
+|   2026-03-21.md  | ## The idea                              |
+| > college/       |                                          |
+|   ideas.md    *  |   Connects to -> physics and             |
+|   quantum-foam   |   -> mathematics. Core idea              |
+|   todo.md        |   relates to #science.                   |
+|                  |                                          |
+|                  | ─────────────────────────────            |
+|                  | 312 words · 18 lines · 2 links           |
+|                  | #science #ideas                          |
+|                  | <- ideas.md                              |
++------------------+------------------------------------------+
+| : cmd  / filter  F search  T tags  W graph  D daily  ? help |
++-------------------------------------------------------------+
+| NORMAL    quantum-foam.md                              5/7  |
++-------------------------------------------------------------+
+```
+
+**Left panel** — file tree. Navigate with `j`/`k`, enter directories with `Enter`, go back with `h` or `-`.  
+**Right panel** — live preview that updates as you move. Shows rendered markdown, tags, word count, and backlinks.  
+**Bottom bar** — hints in normal mode, command input with `:`, filter input with `/`.
+
+---
+
+## Keybindings
+
+Press `?` inside the TUI for the full help screen. All bindings are remappable in `~/.gpad/keybinds.json`.
+
+### Navigation
+
+| Key | Action |
+|---|---|
+| `j` / down | move down |
+| `k` / up | move up |
+| `g` | jump to top |
+| `G` | jump to bottom |
+| `Enter` | directory: cd into it · note: open in editor |
+| `l` / right | expand directory in-place |
+| `h` / left | collapse directory or go to parent |
+| `-` | go up one directory level |
+| `Space` | toggle expand directory |
+
+Directory navigation works like lf: `Enter` replaces the tree with the directory's contents. `h` or `-` goes back up.
+
+### File operations
+
+| Key | Action |
+|---|---|
+| `o` | open in editor |
+| `v` | view rendered markdown (less pager) |
+| `n` | new note in current directory |
+| `d` / `x` | delete (asks confirmation) |
+| `r` | rename — prefills `:mv <current> ` in command bar |
+| `y` | yank path |
+| `p` | paste yanked note into current directory |
+| `P` | toggle pin — pinned notes show `*` in the tree |
+
+### Panels
+
+| Key | Panel |
+|---|---|
+| `F` | Search — fuzzy title + full-text body, type to filter |
+| `T` | Tags — full tag index, Enter drills into tag's notes |
+| `W` | Graph — linked notes sorted by connection count |
+| `D` | Daily — all daily notes newest first |
+| `L` | Links — backlinks and outlinks for selected note |
+
+Inside any panel: `j`/`k` navigate, `/` filter, `Enter` open, `Esc`/`q` close.
+
+### General
+
+| Key | Action |
+|---|---|
+| `s` | git sync (pull + push) |
+| `t` | open today's daily note |
+| `:` | command mode |
+| `/` | filter tree |
+| `?` | full help screen |
+| `Ctrl+L` | force redraw |
+| `q` / `Esc` | quit |
+
+---
+
+## Command mode
+
+Press `:` to enter command mode. Every gpad feature is available here.
 
 ### Notes
 
-```bash
-gpad open <note>              # open or create a note (syncs before + after)
-gpad new <note>               # create with template picker
-gpad new <note> -t meeting    # create with a specific template
-gpad view <note>              # render markdown + backlinks + stats in terminal
-gpad ls                       # tree view of vault (★ = pinned)
+```
+:new <name.md>               create note in current directory
+:new <name.md> -t meeting    create from template
+:open <note>                 open note by path
+:view <note>                 view rendered in pager
+:mkdir <n>                create directory
 ```
 
-### Daily notes
+### File management
 
-```bash
-gpad today                    # open today's note (creates if missing)
-gpad today yesterday          # open yesterday's note
-gpad today list               # show last 14 daily notes
+```
+:mv <src> <dest>             move or rename
+:cp <src> <dest>             copy
+:rm <note>                   delete
 ```
 
-### Search
+### Panels and search
 
-```bash
-gpad find <query>             # full-text body search + fuzzy title match
-gpad find -f <query>          # fuzzy title only
-gpad find -t <query>          # full-text body only
+```
+:find <query>                open search panel with query
+:tags                        tag browser
+:graph                       graph panel
+:daily                       daily notes panel
+:links                       links panel for selected note
+:today                       open today's daily note
 ```
 
-### Wikilinks & graph
+### Git
 
-```bash
-gpad links <note>             # show backlinks and outlinks for a note
-gpad graph                    # ASCII graph of the full vault
-gpad graph <note>             # ego graph: note + immediate neighbours
+```
+:git init <url>              connect vault to git remote
+:git status                  show remote and autopush state
+:sync                        pull then push
 ```
 
-In any note, use `[[note name]]` to link. Aliases and anchors work too:
+### Config
+
+```
+:config                      show current config
+:config editor nvim          set editor
+:config autopush on          push after every save
+:config autopush off         manual sync only
+:keybinds                    edit ~/.gpad/keybinds.json
+```
+
+### Templates
+
+```
+:template list
+:template new <n>
+:template edit <n>
+:template delete <n>
+```
+
+### Other
+
+```
+:help                        full help screen
+:q / :quit                   quit
+```
+
+---
+
+## Custom keybindings
+
+`~/.gpad/keybinds.json` is created on first run. Open it with `:keybinds`, edit any mapping.
+
+```json
+{
+  "s": "panel_search",
+  "S": "sync",
+  "ctrl+n": "new"
+}
+```
+
+**All action names:**
+
+| Action | Default | Description |
+|---|---|---|
+| `move_up` | `k` | move cursor up |
+| `move_down` | `j` | move cursor down |
+| `move_top` | `g` | jump to top |
+| `move_bottom` | `G` | jump to bottom |
+| `enter` | `Enter` | cd into dir or open note |
+| `expand` | `l` `Space` | expand dir in-place |
+| `left` | `h` | collapse or go to parent |
+| `up_dir` | `-` | go up one directory |
+| `open` | `o` | open in editor |
+| `view` | `v` | view in pager |
+| `new` | `n` | new note |
+| `delete` | `d` | delete |
+| `rename` | `r` | rename |
+| `yank` | `y` | copy path |
+| `paste` | `p` | paste |
+| `pin` | `P` | toggle pin |
+| `sync` | `s` | git sync |
+| `today` | `t` | open daily note |
+| `command_mode` | `:` | command bar |
+| `filter_mode` | `/` | filter tree |
+| `help` | `?` | help screen |
+| `redraw` | `Ctrl+L` | force redraw |
+| `quit` | `q` | quit |
+| `panel_search` | `F` | search panel |
+| `panel_tags` | `T` | tag browser |
+| `panel_graph` | `W` | graph panel |
+| `panel_daily` | `D` | daily notes |
+| `panel_links` | `L` | links panel |
+
+---
+
+## CLI reference
+
+All commands work standalone for scripts and aliases.
+
+```bash
+# Notes
+gpad open <note>               open or create
+gpad new <note> [-t template]  create with template
+gpad view <note>               render in terminal
+gpad ls                        tree view
+
+# Daily
+gpad today
+gpad today yesterday
+gpad today list
+
+# Search
+gpad find [query]              TUI panel if no query
+gpad find -f <query>           fuzzy title only
+gpad find -t <query>           full-text only
+
+# Links
+gpad links <note>
+gpad graph [note]
+
+# Tags
+gpad tags [tag]
+gpad tag add <tag> <note>
+gpad tag rm <tag> <note>
+
+# Files
+gpad mv <src> <dest>
+gpad cp <src> <dest>
+gpad rm [-r] [-y] <note>
+
+# Pin
+gpad pin <note>
+gpad unpin <note>
+gpad pinned
+
+# Templates
+gpad template list|new|edit|delete
+
+# Git + config
+gpad git init <url>
+gpad sync
+gpad config editor nvim
+gpad config autopush on|off
+gpad config show
+
+# Shell completion
+source <(gpad completion bash)   # add to ~/.bashrc
+source <(gpad completion zsh)    # add to ~/.zshrc
+gpad completion fish | source
+```
+
+---
+
+## Wikilinks
+
+Write `[[note name]]` in any note body to create a link:
 
 ```markdown
-See [[college/math]] for the proof.
-This relates to [[quantum-foam|quantum mechanics]].
-The key equation is in [[physics#energy]].
+This connects to [[physics]] and [[mathematics]].
+See also [[college/linear-algebra|Linear Algebra]].
 ```
 
-### Tags
+| Syntax | Meaning |
+|---|---|
+| `[[note]]` | resolves to note.md anywhere in vault |
+| `[[folder/note]]` | explicit path |
+| `[[note\|alias]]` | display alias |
+| `[[note#heading]]` | heading anchor |
 
-```bash
-gpad tags                     # full tag index with counts
-gpad tags <tag>               # list notes with this tag
-gpad tag add <tag> <note>     # add tag to frontmatter
-gpad tag rm <tag> <note>      # remove tag from frontmatter
-```
+The graph (`W`), links panel (`L`), and preview footer all update automatically.
 
-Tags can live in frontmatter or inline — both are indexed:
+---
+
+## Tags
 
 ```markdown
 ---
 tags: [go, cli, tools]
 ---
 
-This is also #programming related.
+Also about #programming and #linux.
 ```
 
-### Pinned notes
+Both frontmatter tags and inline `#tags` are indexed.
+
+---
+
+## Daily notes
 
 ```bash
-gpad pin <note>               # pin a note (shows ★ in ls)
-gpad unpin <note>             # unpin
-gpad pinned                   # list all pinned notes
+gpad today          # opens notes/daily/2026-03-22.md
 ```
 
-### File management
+Press `D` in the TUI for the daily notes panel, or `t` to jump to today.
+
+---
+
+## Templates
+
+Built-in: `note`, `daily`, `meeting`, `idea`. Placeholders:
+
+| | |
+|---|---|
+| `{{title}}` | note title from filename |
+| `{{date}}` | today YYYY-MM-DD |
+| `{{time}}` | HH:MM |
+| `{{cursor}}` | stripped on write |
+
+---
+
+## Git sync
 
 ```bash
-gpad mv <src> <dest>          # move or rename (updates H1 title too)
-gpad cp <src> <dest>          # copy a note
-gpad rm <note>                # delete (prompts for confirmation)
-gpad rm -r <folder>           # delete folder recursively
-gpad rm -y <note>             # delete without prompt
+gpad git init git@github.com:you/notes.git
 ```
 
-### Templates
-
-Four built-in templates are seeded on first run: `note`, `daily`, `meeting`, `idea`.
-
-```bash
-gpad template list            # list available templates
-gpad template new <n>         # create a new template (opens in editor)
-gpad template edit <n>        # edit existing template
-gpad template delete <n>      # delete a template
-```
-
-Template placeholders:
-
-```
-{{title}}   → note title (derived from filename)
-{{date}}    → today's date (YYYY-MM-DD)
-{{time}}    → current time (HH:MM)
-{{cursor}}  → stripped on write (marks where cursor lands)
-```
-
-### Git sync
-
-```bash
-gpad git init <url>           # connect remote (SSH or HTTPS)
-gpad git status               # show remote + autopush state
-gpad sync                     # manual pull + push
-gpad config autopush on       # push automatically on every save
-gpad config autopush off      # manual sync only
-```
-
-gpad works fully **offline** with no git setup. Add git any time.
-
-### Configuration
-
-```bash
-gpad config editor nvim       # set preferred editor
-gpad config autopush on       # enable auto-push
-gpad config show              # print current config
-```
-
-Priority order for editor: `config.json` → `$EDITOR` → `$VISUAL` → nvim/vim/micro/nano.
-
-### Shell completion
-
-```bash
-# Zsh
-source <(gpad completion zsh)
-
-# Bash
-source <(gpad completion bash)
-
-# Fish
-gpad completion fish | source
-```
-
-### Syntax guide
-
-```bash
-gpad markdown                 # full markdown + gpad syntax reference
-```
+After connecting, saves push to Git **in the background** — the TUI returns instantly. A brief `↑ pushing...` appears in the status bar and clears automatically. Works with SSH and HTTPS. Fully offline without any Git setup.
 
 ---
 
@@ -219,84 +402,15 @@ gpad markdown                 # full markdown + gpad syntax reference
 
 ```
 ~/.gpad/
-├── config.json               # editor, git settings, pinned list
-├── index.json                # link/tag index cache (auto-built)
+├── config.json
+├── keybinds.json
+├── index.json
 ├── templates/
-│   ├── note.md
-│   ├── daily.md
-│   ├── meeting.md
-│   └── idea.md
 └── notes/
     ├── daily/
-    │   ├── 2026-03-22.md
-    │   └── 2026-03-21.md
     ├── college/
-    │   └── math.md
     └── ideas.md
 ```
-
----
-
-## Frontmatter
-
-Every note gets a frontmatter block (auto-added on first open if absent):
-
-```yaml
----
-title: Quantum Foam
-date: 2026-03-22
-tags: [physics, ideas]
-pinned: false
----
-```
-
----
-
-## Project structure
-
-```
-.
-├── cmd/gpad/main.go          # entry point
-└── internal/
-    ├── cmd/                  # CLI (Cobra commands)
-    │   ├── root.go           # root command + version
-    │   ├── open.go           # gpad open
-    │   ├── new.go            # gpad new
-    │   ├── today.go          # gpad today
-    │   ├── find.go           # gpad find
-    │   ├── links.go          # gpad links
-    │   ├── tags.go           # gpad tags / tag
-    │   ├── pin.go            # gpad pin / unpin / pinned
-    │   ├── graph.go          # gpad graph
-    │   ├── template.go       # gpad template
-    │   ├── view.go           # gpad view
-    │   ├── ls.go             # gpad ls
-    │   ├── git.go            # gpad git
-    │   ├── sync.go           # gpad sync
-    │   ├── config.go         # gpad config
-    │   └── misc.go           # mv, cp, rm, completion, markdown
-    ├── config/               # config.json load/save, pin list
-    ├── core/                 # move, delete, copy, sync logic
-    ├── daily/                # daily note open/create/list
-    ├── editor/               # editor detection + open
-    ├── frontmatter/          # YAML frontmatter parse/write
-    ├── gitrepo/              # git init, add/commit/push, merge
-    ├── help/                 # markdown syntax guide text
-    ├── links/                # [[wikilink]] parse, link graph
-    ├── notes/                # note open/create/stats, tree list
-    ├── search/               # full-text + fuzzy search
-    ├── storage/              # path helpers (~/.gpad/...)
-    ├── tags/                 # tag index across vault
-    ├── templates/            # template apply/save/list
-    ├── ui/                   # note path listing for completion
-    └── viewer/               # ANSI markdown renderer + pager
-```
-
----
-
-## Contributing
-
-Issues and PRs welcome. The architecture is modular — each package has one job and no circular dependencies. Core packages (`frontmatter`, `links`, `tags`, `search`, `storage`) never import CLI packages.
 
 ---
 

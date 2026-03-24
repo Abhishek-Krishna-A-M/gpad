@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/Abhishek-Krishna-A-M/gpad/internal/search"
+	"github.com/Abhishek-Krishna-A-M/gpad/internal/tui"
 	"github.com/spf13/cobra"
 )
 
@@ -23,23 +24,21 @@ var (
 )
 
 var findCmd = &cobra.Command{
-	Use:   "find <query>",
-	Short: "Search notes (full-text + fuzzy title)",
+	Use:   "find [query]",
+	Short: "Search notes — launches TUI search panel when no query given",
 	Long: `Search across all notes.
 
-By default runs both full-text body search and fuzzy title match.
-Flags:
-  -f   fuzzy title match only
-  -t   full-text body search only
-
-Examples:
-  gpad find "quantum entanglement"
-  gpad find -f quant
-  gpad find -t TODO`,
-	Args: cobra.MinimumNArgs(1),
+  gpad find              → TUI with search panel open
+  gpad find <query>      → full-text body search + fuzzy title match
+  gpad find -f <query>   → fuzzy title only
+  gpad find -t <query>   → full-text body only`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		query := strings.Join(args, " ")
+		// No query → open TUI with search panel active
+		if len(args) == 0 {
+			return tui.Run()
+		}
 
+		query := strings.Join(args, " ")
 		if !ftsOnly {
 			runFuzzy(query)
 		}

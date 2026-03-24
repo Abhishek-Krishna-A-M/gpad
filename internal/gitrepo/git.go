@@ -8,14 +8,10 @@ import (
 )
 
 // Initialize sets up git in the notes directory with a remote.
-// Works whether or not the directory already has a repo.
 func Initialize(path, url string) error {
-	// init with explicit main branch (git >= 2.28)
 	run(path, "git", "init", "-b", "main")
-	// fallback rename for older git versions (no-op if already main)
 	run(path, "git", "branch", "-M", "main")
 
-	// configure remote
 	remoteCheck := exec.Command("git", "-C", path, "remote", "get-url", "origin")
 	if err := remoteCheck.Run(); err != nil {
 		run(path, "git", "remote", "add", "origin", url)
@@ -23,21 +19,20 @@ func Initialize(path, url string) error {
 		run(path, "git", "remote", "set-url", "origin", url)
 	}
 
-	// create .gitignore if absent
 	ignore := path + "/.gitignore"
 	if _, err := os.Stat(ignore); os.IsNotExist(err) {
 		_ = os.WriteFile(ignore, []byte("*.tmp\n.DS_Store\n"), 0644)
 	}
 
-	// initial commit if repo has no commits yet
 	logCmd := exec.Command("git", "-C", path, "log", "--oneline", "-1")
 	if logCmd.Run() != nil {
 		run(path, "git", "add", ".")
 		run(path, "git", "commit", "--allow-empty", "-m", "gpad: init vault")
 	}
 
-	// attempt initial pull from main (non-fatal — remote may be empty)
-	pullCmd := exec.Command("git", "-C", path, "pull", "origin", "main", "--no-rebase", "--allow-unrelated-histories")
+	// non-fatal pull — remote may be empty on first init
+	pullCmd := exec.Command("git", "-C", path, "pull", "origin", "main",
+		"--no-rebase", "--allow-unrelated-histories")
 	pullOut, _ := pullCmd.CombinedOutput()
 	if strings.Contains(string(pullOut), "error") {
 		fmt.Println("Remote is empty or unreachable — will push on first sync.")
@@ -46,19 +41,23 @@ func Initialize(path, url string) error {
 	return nil
 }
 
-// AddCommitPush stages everything, commits, and pushes to main.
-// It pulls first to minimise conflicts.
+// AddCommitPush stages, commits, and pushes to main.
+// All git output is suppressed — this is safe to call from a goroutine
+// while the TUI is running. Errors are returned, never printed.
 func AddCommitPush(path, msg string) error {
-	// pull latest from main
-	pullCmd := exec.Command("git", "-C", path, "pull", "origin", "main", "--no-rebase", "--allow-unrelated-histories")
+	// fix stale tracking branch
+	_ = exec.Command("git", "-C", path, "branch",
+		"--set-upstream-to=origin/main", "main").Run()
+
+	// pull latest — capture output, never print it
+	pullCmd := exec.Command("git", "-C", path, "pull", "origin", "main",
+		"--no-rebase", "--allow-unrelated-histories")
 	pullCmd.Dir = path
 	if out, err := pullCmd.CombinedOutput(); err != nil {
-		outStr := string(out)
-		if strings.Contains(outStr, "CONFLICT") {
-			fmt.Println("⚠  Merge conflict detected — resolve manually in", path)
-			return fmt.Errorf("merge conflict")
+		if strings.Contains(string(out), "CONFLICT") {
+			return fmt.Errorf("merge conflict — resolve manually in %s", path)
 		}
-		// non-fatal: offline, empty remote, etc.
+		// offline / empty remote / no-op — non-fatal, continue to push
 	}
 
 	run(path, "git", "add", ".")
@@ -69,16 +68,19 @@ func AddCommitPush(path, msg string) error {
 		return nil
 	}
 
-	// always push to main explicitly — never rely on tracking branch default
-	pushCmd := exec.Command("git", "-C", path, "push", "--set-upstream", "origin", "main")
-	pushCmd.Stdout = os.Stdout
-	pushCmd.Stderr = os.Stderr
+	// push — stdout/stderr suppressed so TUI screen is never corrupted
+	pushCmd := exec.Command("git", "-C", path, "push",
+		"--set-upstream", "origin", "main")
+	pushCmd.Stdout = nil
+	pushCmd.Stderr = nil
 	return pushCmd.Run()
 }
 
-// run executes a git command silently (errors ignored — callers decide).
+// run executes a git command silently, discarding all output.
 func run(dir string, args ...string) {
 	cmd := exec.Command(args[0], args[1:]...)
 	cmd.Dir = dir
+	cmd.Stdout = nil
+	cmd.Stderr = nil
 	_ = cmd.Run()
 }

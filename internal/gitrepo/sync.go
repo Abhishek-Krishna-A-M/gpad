@@ -6,8 +6,8 @@ import (
 )
 
 // Pull fetches and merges from origin/main.
-// --allow-unrelated-histories handles the case where the local vault
-// and the remote were initialised separately (common on first sync).
+// --allow-unrelated-histories handles first-time sync when the local vault
+// and remote were initialised separately.
 func Pull(path string) error {
 	// fix any stale tracking branch still pointing to master
 	_ = exec.Command("git", "-C", path, "branch", "--set-upstream-to=origin/main", "main").Run()

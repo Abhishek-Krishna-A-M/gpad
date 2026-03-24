@@ -2,49 +2,79 @@
 set -e
 
 REPO="Abhishek-Krishna-A-M/gpad"
+BINARY="gpad"
 INSTALL_DIR="/usr/local/bin"
-TMP_DIR="$(mktemp -d)"
 
-# ── cleanup on exit ───────────────────────────────────────────────────────────
-cleanup() {
-  rm -rf "$TMP_DIR"
-}
-trap cleanup EXIT
+# ── detect OS and arch ───────────────────────────────────────────────────────
 
-# ── check for Go ──────────────────────────────────────────────────────────────
-if ! command -v go >/dev/null 2>&1; then
-  echo "Go is not installed. Install it from https://go.dev/dl/ then re-run this script."
+OS="$(uname -s)"
+ARCH="$(uname -m)"
+
+case "$OS" in
+  Linux)  OS="linux" ;;
+  Darwin) OS="darwin" ;;
+  *)
+    echo "Unsupported OS: $OS"
+    exit 1
+    ;;
+esac
+
+case "$ARCH" in
+  x86_64)  ARCH="amd64" ;;
+  aarch64|arm64) ARCH="arm64" ;;
+  *)
+    echo "Unsupported architecture: $ARCH"
+    exit 1
+    ;;
+esac
+
+# ── fetch latest release tag ─────────────────────────────────────────────────
+
+echo "Fetching latest gpad release..."
+
+LATEST=$(curl -fsSL "https://api.github.com/repos/${REPO}/releases/latest" \
+  | grep '"tag_name"' \
+  | sed -E 's/.*"tag_name": *"([^"]+)".*/\1/')
+
+if [ -z "$LATEST" ]; then
+  echo "Could not determine latest release. Check your internet connection."
   exit 1
 fi
 
-# ── check for git ─────────────────────────────────────────────────────────────
-if ! command -v git >/dev/null 2>&1; then
-  echo "git is not installed. Install git then re-run this script."
-  exit 1
-fi
+echo "Latest release: $LATEST"
 
-# ── clone and build ───────────────────────────────────────────────────────────
-echo "Cloning gpad..."
-git clone --depth=1 "https://github.com/${REPO}.git" "$TMP_DIR/gpad" 2>/dev/null
+# ── download and install ─────────────────────────────────────────────────────
 
-echo "Building gpad..."
-cd "$TMP_DIR/gpad"
-go build -ldflags="-s -w" -trimpath -o "$TMP_DIR/gpad_bin" ./cmd/gpad/
+URL="https://github.com/${REPO}/releases/download/${LATEST}/gpad_${OS}_${ARCH}"
 
-# ── install ───────────────────────────────────────────────────────────────────
+TMP="$(mktemp)"
+echo "Downloading gpad ${LATEST} (${OS}/${ARCH})..."
+curl -fsSL "$URL" -o "$TMP"
+chmod +x "$TMP"
+
+# ── pick install location ─────────────────────────────────────────────────────
+
 if [ -w "$INSTALL_DIR" ]; then
-  mv "$TMP_DIR/gpad_bin" "${INSTALL_DIR}/gpad"
+  mv "$TMP" "${INSTALL_DIR}/${BINARY}"
 else
   echo "Installing to ${INSTALL_DIR} (needs sudo)..."
-  sudo mv "$TMP_DIR/gpad_bin" "${INSTALL_DIR}/gpad"
+  sudo mv "$TMP" "${INSTALL_DIR}/${BINARY}"
 fi
 
-# ── done ──────────────────────────────────────────────────────────────────────
-echo ""
-echo "  gpad installed to ${INSTALL_DIR}/gpad"
-echo ""
-echo "  Get started:"
-echo "    gpad today               open today's daily note"
-echo "    gpad open my-note.md     create your first note"
-echo "    gpad git init <url>      connect git sync (optional)"
-echo ""
+# ── verify ───────────────────────────────────────────────────────────────────
+
+if command -v gpad >/dev/null 2>&1; then
+  echo ""
+  echo "  gpad $(gpad --version 2>/dev/null | head -1) installed successfully."
+  echo ""
+  echo "  Get started:"
+  echo "    gpad today               open today's daily note"
+  echo "    gpad open my-note.md     create your first note"
+  echo "    gpad git init <url>      connect git sync (optional)"
+  echo ""
+else
+  echo ""
+  echo "  Installed to ${INSTALL_DIR}/gpad"
+  echo "  Make sure ${INSTALL_DIR} is in your PATH."
+  echo ""
+fi
