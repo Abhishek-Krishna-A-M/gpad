@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os/exec"
 	"strings"
-	"syscall"
 
 	"github.com/Abhishek-Krishna-A-M/gpad/internal/config"
 	"github.com/Abhishek-Krishna-A-M/gpad/internal/gitrepo"
@@ -58,9 +57,7 @@ func AutoSaveDetached(msg string) {
 	cmd.Stdout = nil
 	cmd.Stderr = nil
 
-	// Detach so the child lives in its own process group and survives
-	// when the parent (gpad) exits.
-	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	detachProcess(cmd)
 
 	_ = cmd.Start() // fire-and-forget — never Wait()
 }
