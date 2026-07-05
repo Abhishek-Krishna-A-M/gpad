@@ -1,5 +1,24 @@
 # Changelog
 
+## [3.1.0] — 2026-07-05
+
+### Bug fixes & stability
+- **Fixed `:rm` command** — now actually deletes files (was a no-op).
+- **Fixed UTF-8 support** — multi-byte characters work in command/filter/search modes.
+- **Fixed ANSI stripping** — all escape sequences are handled, not just color codes.
+- **Fixed data race** — status messages are now thread-safe (no more flickering/crashing).
+- **Fixed wikilink scanning** — links in the last 3 bytes of a file are now indexed.
+- **Fixed test output** — `gpad ls` now shows correct pin markers on nested notes.
+- **Fixed dot-file visibility** — hidden notes (`.todo.md`) now appear in the TUI tree.
+- **Fixed terminal corruption** — background git push no longer prints to the TUI screen.
+- **Fixed editor fallback** — nano/vim/micro now receive proper terminal I/O.
+- **Fixed ambiguous link resolution** — deterministic selection when names differ only by case.
+
+### Performance
+- **Detached background git push** — `AutoSaveDetached` spawns a truly independent child process. Git add/commit/push runs *after* gpad exits, so editing feels instant. No more 3-second status timers or goroutine races.
+
+---
+
 ## [3.0.0] — 2026-03-25
 
 ### 🚀 The TUI Revolution

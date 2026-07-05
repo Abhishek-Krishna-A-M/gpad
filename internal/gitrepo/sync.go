@@ -1,7 +1,6 @@
 package gitrepo
 
 import (
-	"os"
 	"os/exec"
 )
 
@@ -17,7 +16,7 @@ func Pull(path string) error {
 		"--allow-unrelated-histories",
 	)
 	cmd.Dir = path
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+	cmd.Stdout = nil
+	cmd.Stderr = nil
 	return cmd.Run()
 }

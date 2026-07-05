@@ -50,7 +50,7 @@ func List() error {
 	}
 
 	fmt.Printf("%s%snotes/%s\n", bold, cyan, reset)
-	printTree(root.children, "", rootPath)
+	printTree(root.children, "", "")
 	return nil
 }
 
@@ -75,7 +75,7 @@ func insert(parent *node, parts []string, isDir bool) {
 	}
 }
 
-func printTree(children []*node, prefix, rootPath string) {
+func printTree(children []*node, prefix, pathPrefix string) {
 	sort.Slice(children, func(i, j int) bool {
 		if children[i].isFile == children[j].isFile {
 			return children[i].name < children[j].name
@@ -85,14 +85,16 @@ func printTree(children []*node, prefix, rootPath string) {
 	for i, n := range children {
 		isLast := i == len(children)-1
 		branch := "├── "
-		nextPrefix := prefix + "│   "
+		nextViz := prefix + "│   "
 		if isLast {
 			branch = "└── "
-			nextPrefix = prefix + "    "
+			nextViz = prefix + "    "
+		}
+		rel := n.name
+		if pathPrefix != "" {
+			rel = pathPrefix + "/" + n.name
 		}
 		if n.isFile {
-			// compute relative path from notesRoot for pin check
-			rel := filepath.Join(strings.TrimPrefix(prefix, ""), n.name)
 			pin := ""
 			if config.IsPinned(rel) {
 				pin = yellow + " ★" + reset
@@ -100,7 +102,7 @@ func printTree(children []*node, prefix, rootPath string) {
 			fmt.Printf("%s%s%s%s%s\n", prefix, branch, n.name, pin, reset)
 		} else {
 			fmt.Printf("%s%s%s%s/%s\n", prefix, branch, bold, n.name, reset)
-			printTree(n.children, nextPrefix, rootPath)
+			printTree(n.children, nextViz, rel)
 		}
 	}
 }

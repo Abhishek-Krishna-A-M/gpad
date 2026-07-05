@@ -5,7 +5,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"time"
 	"strings"
 
 	"github.com/Abhishek-Krishna-A-M/gpad/internal/config"
@@ -27,23 +26,16 @@ func (a *App) openSelected() {
 }
 
 // openAbsPath suspends the TUI, opens absPath in the user's editor,
-// then resumes instantly. Git push runs in a background goroutine so
-// there is zero lag when returning to the TUI.
+// then resumes instantly. Git push is spawned as a detached child
+// process so it survives gpad exit.
 func (a *App) openAbsPath(absPath, relPath string) {
 	a.suspendAndRun(func() error {
 		return editor.Open(absPath)
 	})
 	a.previewCache = ""
 	_ = a.buildTree()
-	// async push — TUI is already redrawn before git does any network I/O
-	go func() {
-		core.AutoSave("update " + relPath)
-	}()
-	a.setStatus("↑ pushing…")
-	go func() {
-		time.Sleep(3 * time.Second)
-		a.setStatus("")
-	}()
+	core.AutoSaveDetached("update " + relPath)
+	a.setStatus("↑ pushed (background)")
 }
 
 // ── View rendered ─────────────────────────────────────────────────────────────
@@ -210,14 +202,8 @@ func (a *App) createNote(name, tmpl string) {
 	})
 	a.previewCache = ""
 	_ = a.buildTree()
-	go func() {
-		core.AutoSave("new " + name)
-	}()
-	a.setStatus("↑ pushing…")
-	go func() {
-		time.Sleep(3 * time.Second)
-		a.setStatus("")
-	}()
+	core.AutoSaveDetached("new " + name)
+	a.setStatus("↑ pushed (background)")
 }
 
 func (a *App) createDir(name string) {
@@ -283,14 +269,8 @@ func (a *App) openToday() {
 	})
 	a.previewCache = ""
 	_ = a.buildTree()
-	go func() {
-		core.AutoSave("daily " + daily.RelPath())
-	}()
-	a.setStatus("↑ pushing…")
-	go func() {
-		time.Sleep(3 * time.Second)
-		a.setStatus("")
-	}()
+	core.AutoSaveDetached("daily " + daily.RelPath())
+	a.setStatus("↑ pushed (background)")
 }
 
 // ── Git status ────────────────────────────────────────────────────────────────

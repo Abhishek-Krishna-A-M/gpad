@@ -84,7 +84,7 @@ func buildNode(absPath, relPath string, depth int, notesRoot string) (*treeNode,
 	var dirs, files []os.DirEntry
 	for _, e := range entries {
 		name := e.Name()
-		if name == ".git" || strings.HasPrefix(name, ".") {
+		if name == ".git" || name == ".DS_Store" {
 			continue
 		}
 		if e.IsDir() {

@@ -17,10 +17,13 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"sync"
+	"unicode/utf8"
 
 	"golang.org/x/term"
 
 	"github.com/Abhishek-Krishna-A-M/gpad/internal/config"
+	"github.com/Abhishek-Krishna-A-M/gpad/internal/core"
 	"github.com/Abhishek-Krishna-A-M/gpad/internal/gitrepo"
 	"github.com/Abhishek-Krishna-A-M/gpad/internal/storage"
 	"github.com/Abhishek-Krishna-A-M/gpad/internal/templates"
@@ -80,9 +83,10 @@ type App struct {
 	panel *PanelState
 
 	// status
-	mode      mode
-	statusMsg string
-	gitStatus string
+	mode       mode
+	statusMsg  string
+	statusMu   sync.RWMutex
+	gitStatus  string
 
 	// yank buffer
 	yankBuf string
@@ -170,12 +174,14 @@ func (a *App) loop() error {
 				if a.treeWidth > 42 {
 					a.treeWidth = 42
 				}
+				a.previewCache = ""
+				_ = a.buildTree()
 				os.Stdout.WriteString(aClearScr + aHome)
 			}
 		}
 
 		quit := a.dispatch(b)
-		if quit || a.statusMsg == "__quit__" {
+		if quit || a.getStatus() == "__quit__" {
 			return nil
 		}
 		a.draw()
@@ -259,7 +265,7 @@ func (a *App) execAction(act Action) bool {
 	case ActionCommandMode:
 		a.mode = modeCommand
 		a.cmdBuf = ""
-		a.statusMsg = ""
+		a.setStatus("")
 	case ActionFilterMode:
 		a.mode = modeFilter
 		a.filterStr = ""
@@ -287,7 +293,7 @@ func (a *App) execAction(act Action) bool {
 // ── Command mode input ────────────────────────────────────────────────────────
 
 func (a *App) handleCommandInput(b []byte) bool {
-	ch := rune(b[0])
+	ch, _ := utf8.DecodeRune(b)
 
 	// arrow keys in command mode = history
 	if b[0] == 0x1b && len(b) >= 3 && b[1] == '[' {
@@ -313,7 +319,7 @@ func (a *App) handleCommandInput(b []byte) bool {
 	case ch == 0x1b: // Esc
 		a.mode = modeNormal
 		a.cmdBuf = ""
-		a.statusMsg = ""
+		a.setStatus("")
 	case ch == '\r' || ch == '\n':
 		a.execCommandStr(a.cmdBuf)
 		if a.cmdBuf != "" {
@@ -349,9 +355,7 @@ func (a *App) execCommandStr(cmd string) {
 
 	switch verb {
 	case "q", "quit":
-		// mark quit — handled by returning true from dispatch on next cycle
-		// we set a flag so the loop exits cleanly
-		a.statusMsg = "__quit__"
+		a.setStatus("__quit__")
 	case "open", "e", "edit":
 		if len(args) > 0 {
 			abs := storage.AbsPath(args[0])
@@ -386,9 +390,18 @@ func (a *App) execCommandStr(cmd string) {
 		}
 	case "rm", "delete", "remove":
 		if len(args) > 0 {
-			a.confirmMsg = "delete " + args[0] + "? [y/N]"
+			recursive := false
+			target := args[0]
+			if len(args) > 1 && args[0] == "-r" {
+				recursive = true
+				target = args[1]
+			}
+			a.mode = modeConfirm
+			confirmTarget := target
+			confirmRecursive := recursive
+			a.confirmMsg = "delete " + confirmTarget + "? [y/N]"
 			a.confirmAction = func() error {
-				return nil // core.Delete wired via confirmDelete
+				return core.Delete([]string{confirmTarget}, confirmRecursive)
 			}
 			_ = a.buildTree()
 		} else {
@@ -527,7 +540,7 @@ func defaultTemplateContent(name string) string {
 // ── Filter mode input ─────────────────────────────────────────────────────────
 
 func (a *App) handleFilterInput(b []byte) bool {
-	ch := rune(b[0])
+	ch, _ := utf8.DecodeRune(b)
 	switch {
 	case b[0] == 0x1b:
 		a.mode = modeNormal
@@ -598,7 +611,7 @@ func (a *App) handlePanelInput(b []byte) bool {
 }
 
 func (a *App) handlePanelFilterInput(b []byte) bool {
-	ch := rune(b[0])
+	ch, _ := utf8.DecodeRune(b)
 	switch {
 	case b[0] == 0x1b:
 		a.mode = modeNormal
@@ -629,25 +642,24 @@ func (a *App) handlePanelFilterInput(b []byte) bool {
 // ── Confirm dialog ────────────────────────────────────────────────────────────
 
 func (a *App) handleConfirmInput(b []byte) bool {
-	ch := rune(b[0])
-	switch ch {
-	case 'y', 'Y':
-		if a.confirmAction != nil {
-			if err := a.confirmAction(); err != nil {
-				a.setStatus("error: " + err.Error())
-			} else {
-				a.setStatus("done")
-			}
+	ch, _ := utf8.DecodeRune(b)
+	isConfirm := ch == 'y' || ch == 'Y'
+	if isConfirm && a.confirmAction != nil {
+		if err := a.confirmAction(); err != nil {
+			a.setStatus("error: " + err.Error())
+		} else {
+			a.setStatus("done")
 		}
-		a.mode = modeNormal
-		a.confirmMsg = ""
-		a.confirmAction = nil
-	default:
-		a.mode = modeNormal
-		a.confirmMsg = ""
-		a.confirmAction = nil
+	} else if !isConfirm {
 		a.setStatus("cancelled")
 	}
+	if isConfirm {
+		a.previewCache = ""
+		_ = a.buildTree()
+	}
+	a.mode = modeNormal
+	a.confirmMsg = ""
+	a.confirmAction = nil
 	return false
 }
 
@@ -662,11 +674,20 @@ func (a *App) askConfirm(msg string, action func() error) {
 func (a *App) enterCommand(prefill string) {
 	a.mode = modeCommand
 	a.cmdBuf = prefill
-	a.statusMsg = ""
+	a.setStatus("")
 }
 
 func (a *App) setStatus(msg string) {
+	a.statusMu.Lock()
 	a.statusMsg = msg
+	a.statusMu.Unlock()
+}
+
+func (a *App) getStatus() string {
+	a.statusMu.RLock()
+	msg := a.statusMsg
+	a.statusMu.RUnlock()
+	return msg
 }
 
 // ── Utility ───────────────────────────────────────────────────────────────────
@@ -675,24 +696,5 @@ func lastRuneSize(s string) (r rune, size int) {
 	if len(s) == 0 {
 		return 0, 0
 	}
-	// scan backward
-	for i := len(s); i > 0; {
-		r, size = decodeLastRune(s[:i])
-		return r, size
-	}
-	return 0, 0
-}
-
-func decodeLastRune(s string) (rune, int) {
-	if len(s) == 0 {
-		return 0, 0
-	}
-	// walk backward from end to find rune boundary
-	for i := 1; i <= 4 && i <= len(s); i++ {
-		r := []rune(s[len(s)-i:])
-		if len(r) > 0 {
-			return r[0], i
-		}
-	}
-	return rune(s[len(s)-1]), 1
+	return utf8.DecodeLastRuneInString(s)
 }

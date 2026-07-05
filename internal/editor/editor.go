@@ -24,10 +24,18 @@ func Open(path string) error {
 
 	for _, e := range []string{"nvim", "vim", "micro", "nano"} {
 		if exists(e) {
-			return exec.Command(e, path).Run()
+			cmd := exec.Command(e, path)
+			cmd.Stdin = os.Stdin
+			cmd.Stdout = os.Stdout
+			cmd.Stderr = os.Stderr
+			return cmd.Run()
 		}
 	}
-	return exec.Command("nano", path).Run()
+	cmd := exec.Command("nano", path)
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
 }
 
 func run(cmdStr, file string) error {

@@ -57,12 +57,20 @@ func stripANSI(s string) string {
 	var out strings.Builder
 	i := 0
 	for i < len(s) {
-		if s[i] == 0x1b && i+1 < len(s) && s[i+1] == '[' {
-			i += 2
-			for i < len(s) && s[i] != 'm' {
-				i++
+		if s[i] == 0x1b {
+			if i+1 < len(s) && s[i+1] == '[' {
+				// CSI sequence — skip to final byte (letter)
+				i += 2
+				for i < len(s) && !(s[i] >= 0x40 && s[i] <= 0x7e) {
+					i++
+				}
+				if i < len(s) {
+					i++ // skip final byte
+				}
+				continue
 			}
-			i++ // skip 'm'
+			// standalone ESC — skip it
+			i++
 			continue
 		}
 		out.WriteByte(s[i])
@@ -80,13 +88,21 @@ func truncANSI(s string, n int) string {
 	visible := 0
 	i := 0
 	for i < len(s) && visible < n {
-		if s[i] == 0x1b && i+1 < len(s) && s[i+1] == '[' {
-			j := i + 2
-			for j < len(s) && s[j] != 'm' {
-				j++
+		if s[i] == 0x1b {
+			if i+1 < len(s) && s[i+1] == '[' {
+				j := i + 2
+				for j < len(s) && !(s[j] >= 0x40 && s[j] <= 0x7e) {
+					j++
+				}
+				if j < len(s) {
+					j++ // include final byte
+				}
+				out.WriteString(s[i:j])
+				i = j
+				continue
 			}
-			out.WriteString(s[i : j+1])
-			i = j + 1
+			// standalone ESC
+			i++
 			continue
 		}
 		r, size := utf8.DecodeRuneInString(s[i:])

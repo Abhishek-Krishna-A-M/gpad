@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -161,8 +162,8 @@ func extractLinks(content string) []string {
 	var targets []string
 	seen := map[string]bool{}
 	i := 0
-	for i < len(content)-3 {
-		if content[i] == '[' && content[i+1] == '[' {
+	for i < len(content)-1 {
+		if content[i] == '[' && i+1 < len(content) && content[i+1] == '[' {
 			end := strings.Index(content[i+2:], "]]")
 			if end >= 0 {
 				raw := content[i+2 : i+2+end]
@@ -258,9 +259,14 @@ func resolveTarget(target, notesRoot string, cache *Cache) string {
 	if _, ok := cache.Notes[target]; ok {
 		return target
 	}
-	// case-insensitive base name match
+	// case-insensitive base name match — iterate in sorted order for determinism
 	want := strings.ToLower(filepath.Base(target))
+	keys := make([]string, 0, len(cache.Notes))
 	for rel := range cache.Notes {
+		keys = append(keys, rel)
+	}
+	sort.Strings(keys)
+	for _, rel := range keys {
 		if strings.ToLower(filepath.Base(rel)) == want {
 			return rel
 		}

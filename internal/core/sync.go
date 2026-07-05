@@ -2,6 +2,9 @@ package core
 
 import (
 	"fmt"
+	"os/exec"
+	"strings"
+	"syscall"
 
 	"github.com/Abhishek-Krishna-A-M/gpad/internal/config"
 	"github.com/Abhishek-Krishna-A-M/gpad/internal/gitrepo"
@@ -26,10 +29,38 @@ func autoCommit(msg string) error {
 	return gitrepo.AddCommitPush(storage.NotesDir(), msg)
 }
 
-// AutoSave is called by 'open' after editing — errors are swallowed so
-// the user never sees a push failure block their workflow.
+// AutoSave is called by 'open' after editing — errors are silently
+// discarded so the TUI is never corrupted by git output.
 func AutoSave(msg string) {
-	if err := autoCommit(msg); err != nil {
-		fmt.Println("sync:", err)
+	_ = autoCommit(msg)
+}
+
+// AutoSaveDetached spawns a truly detached child process that stages,
+// commits, and pushes changes. The process lives on even after gpad
+// exits — no blocking, no goroutines, no risk of TUI corruption.
+func AutoSaveDetached(msg string) {
+	cfg, _ := config.Load()
+	if !cfg.GitEnabled || !cfg.AutoPush {
+		return
 	}
+
+	notesDir := storage.NotesDir()
+	escapedDir := strings.ReplaceAll(notesDir, "'", "'\\''")
+	escapedMsg := strings.ReplaceAll(msg, "'", "'\\''")
+
+	shellCmd := fmt.Sprintf(
+		"cd '%s' && git add . && git commit -m 'gpad: %s' && git push",
+		escapedDir, escapedMsg,
+	)
+
+	cmd := exec.Command("sh", "-c", shellCmd)
+	cmd.Stdin = nil
+	cmd.Stdout = nil
+	cmd.Stderr = nil
+
+	// Detach so the child lives in its own process group and survives
+	// when the parent (gpad) exits.
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+
+	_ = cmd.Start() // fire-and-forget — never Wait()
 }

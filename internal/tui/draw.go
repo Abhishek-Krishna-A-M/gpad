@@ -92,9 +92,9 @@ func (a *App) drawHeader(sb *strings.Builder) {
 
 func (a *App) drawMain(sb *strings.Builder) {
 	treeW := a.treeWidth
-	prevW := a.width - treeW - 2 // -1 divider -1 padding
-	if prevW < 4 {
-		prevW = 4
+	previewW := a.width - treeW - 2 // -1 divider -1 padding
+	if previewW < 4 {
+		previewW = 4
 	}
 	visH := a.treeHeight()
 	preview := a.getPreview()
@@ -116,8 +116,8 @@ func (a *App) drawMain(sb *strings.Builder) {
 		if i < len(preview) {
 			line = preview[i]
 		}
-		if vlen(line) > prevW {
-			line = truncANSI(line, prevW-1) + "…"
+		if vlen(line) > previewW {
+			line = truncANSI(line, previewW-1) + "…"
 		}
 		sb.WriteString(line + aClearEOL)
 	}
@@ -201,8 +201,8 @@ func (a *App) drawCommandBar(sb *strings.Builder) {
 	case modeConfirm:
 		sb.WriteString(aRed + aBold + " ! " + aReset + aFg + a.confirmMsg + aReset)
 	default:
-		if a.statusMsg != "" {
-			sb.WriteString(aFgDim + " " + a.statusMsg + aReset)
+		if msg := a.getStatus(); msg != "" {
+			sb.WriteString(aFgDim + " " + msg + aReset)
 		} else {
 			sb.WriteString(aFgDim + " : cmd  / filter  F search  T tags  W graph  D daily  ? help  q quit" + aReset)
 		}

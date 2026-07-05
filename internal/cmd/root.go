@@ -10,7 +10,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const version = "2.0.0"
+const version = "3.1.0"
 
 var rootCmd = &cobra.Command{
 	Use:   "gpad",

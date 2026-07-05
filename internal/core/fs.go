@@ -11,12 +11,6 @@ import (
 	"github.com/Abhishek-Krishna-A-M/gpad/internal/storage"
 )
 
-// safePrefix returns the notes root with a trailing separator,
-// so /notes/daily passes but /notes-other does not.
-func safePrefix() string {
-	return filepath.Clean(storage.NotesDir()) + string(filepath.Separator)
-}
-
 // inVault reports whether abs is inside (or equal to) the notes root.
 func inVault(abs string) bool {
 	clean := filepath.Clean(abs)
